@@ -1,11 +1,6 @@
 from __future__ import annotations
 
 import ast
-import sys
-import threading
-import time
-from pathlib import Path
-from typing import List, Optional
 
 import typer
 from rich.panel import Panel
@@ -50,7 +45,7 @@ def start_practice(
     concept: str = typer.Argument(
         ..., help="Concept to practice (e.g. 'list_comprehension', 'dataclass')"
     ),
-    domain: Optional[str] = typer.Option(
+    domain: str | None = typer.Option(
         None, "--domain", "-d", help="Domain context (e.g. 'finance', 'gaming')"
     ),
     timeout_minutes: int = typer.Option(
@@ -74,24 +69,21 @@ def start_practice(
     console.print(f"[info]Concept:[/info] {challenge.concept_name}")
     console.print(f"[info]Domain:[/info] {challenge.domain}")
     console.print(f"[info]Time limit:[/info] {timeout_minutes} minutes")
-    console.print(f"\n[bold]Problem:[/bold]")
+    console.print("\n[bold]Problem:[/bold]")
     console.print(challenge.description)
-    console.print(f"\n[bold]Starter code (use or ignore):[/bold]")
+    console.print("\n[bold]Starter code (use or ignore):[/bold]")
     console.print(Panel(challenge.code_snippet, border_style="cyan"))
 
     total_seconds = timeout_minutes * 60
     solution_code = ""
     time_left = total_seconds
-    used_extend = False
-
     while time_left > 0:
         console.print(f"\n[info]Time remaining:[/info] {time_left // 60}:{time_left % 60:02d}")
         code = _read_multiline_input()
 
         if code == "EXTEND":
             time_left += EXTEND_SECONDS
-            used_extend = True
-            console.print(f"[success]Time extended! +2 min. Total remaining: {time_left // 60}:{time_left % 60:02d}[/success]")
+            console.print(f"[success]Time extended! +2 min. Remaining: {time_left // 60}:{time_left % 60:02d}[/success]")
             continue
 
         solution_code = code
@@ -219,7 +211,6 @@ def _code_uses_concept(code: str, concept_name: str) -> bool:
         "if_else": lambda c: "if " in c and ":" in c,
         "for_loop": lambda c: "for " in c and " in " in c and ":" in c,
         "while_loop": lambda c: "while " in c and ":" in c,
-        "file_io": lambda c: 'open(' in c or '.read()' in c,
         "variable_assignment": lambda c: "=" in c and "==" not in c,
         "basic_types": lambda c: '"' in c or "'" in c,
         "boolean_ops": lambda c: " and " in c or " or " in c or " not " in c,
@@ -260,12 +251,12 @@ def _show_analysis(analysis: dict, challenge, concept: str = "", domain_str: str
     console.print(f"Parses: {'[success]Yes[/success]' if analysis['parses'] else '[debt]No[/debt]'}  |  Uses '{challenge.concept_name}': {'[success]Yes[/success]' if analysis['has_target_concept'] else '[debt]No[/debt]'}")
 
     if analysis["strengths"]:
-        console.print(f"\n[success]Strengths:[/success]")
+        console.print("\n[success]Strengths:[/success]")
         for s in analysis["strengths"]:
             console.print(f"  + {s}")
 
     if analysis["issues"]:
-        console.print(f"\n[debt]Issues:[/debt]")
+        console.print("\n[debt]Issues:[/debt]")
         for i in analysis["issues"]:
             console.print(f"  - {i}")
 
@@ -284,14 +275,19 @@ LEARNING_PATHS = {
             ("string_methods", "Strings ke saath khelo (split, join, upper)"),
             ("f_strings", "f-strings se acchi output likho"),
             ("arithmetic", "Math operations (+, -, *, /)"),
+            ("import_basic", "import se modules use karna"),
             ("comparisons", "Values compare karna (==, >, <)"),
+            ("boolean_ops", "and/or/not - multiple conditions"),
             ("if_else", "Conditions lagao - if/elif/else"),
             ("for_loop", "Loops - for se iterate karna"),
             ("while_loop", "While loop - condition-based repetition"),
             ("list_ops", "List operations (append, remove, pop)"),
             ("dict_ops", "Dictionary use karna (key-value pairs)"),
+            ("tuple_unpacking", "Tuples aur unpacking"),
             ("function_def", "Apne functions banana (def)"),
             ("return_value", "Functions se value return karna"),
+            ("file_io", "Files padhna aur likhna (open/read/write)"),
+            ("set_ops", "Set operations - unique items, union, intersection"),
         ],
     },
     "intermediate": {
@@ -333,10 +329,10 @@ LEARNING_PATHS = {
 
 @practice_app.command("path")
 def show_path(
-    path_name: Optional[str] = typer.Argument(
+    path_name: str | None = typer.Argument(
         None, help="Path name: beginner, intermediate, advanced"
     ),
-    step_number: Optional[int] = typer.Option(
+    step_number: int | None = typer.Option(
         None, "--step", "-s", help="Start practice at a specific step number"
     ),
     domain: str = typer.Option(
@@ -350,9 +346,9 @@ def show_path(
         console.print("[title]Available Learning Paths[/title]\n")
         for key, path in LEARNING_PATHS.items():
             console.print(f"  [concept]{key}[/concept] - {path['title']} ({len(path['steps'])} steps)")
-        console.print(f"\n[info]Usage:[/info] codecraft practice path [name]")
-        console.print(f"[info]Example:[/info] codecraft practice path beginner")
-        console.print(f"[info]Start at step:[/info] codecraft practice path beginner --step 3")
+        console.print("\n[info]Usage:[/info] codecraft practice path [name]")
+        console.print("[info]Example:[/info] codecraft practice path beginner")
+        console.print("[info]Start at step:[/info] codecraft practice path beginner --step 3")
         return
 
     if path_name not in LEARNING_PATHS:
@@ -383,7 +379,7 @@ def show_path(
 
 @practice_app.command("list")
 def list_concepts(
-    search: Optional[str] = typer.Argument(None, help="Search for concepts by name"),
+    search: str | None = typer.Argument(None, help="Search for concepts by name"),
 ) -> None:
     concepts = ConceptTaxonomy.all()
     if search:

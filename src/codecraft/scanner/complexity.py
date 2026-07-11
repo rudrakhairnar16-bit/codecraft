@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import ast
-from typing import Set
 
 
 class ComplexityAnalyzer(ast.NodeVisitor):
     def __init__(self):
         self.complexity: int = 1
-        self._conditions: Set[int] = set()
+        self._conditions: set[int] = set()
 
     def analyze(self, tree: ast.AST) -> float:
         self.complexity = 1

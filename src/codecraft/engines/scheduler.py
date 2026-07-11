@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
 
 from codecraft.db.repository import Repository
 from codecraft.models.review import ReviewQueue, SpacedRepetitionCard
@@ -14,7 +13,7 @@ class ForgettingScheduler:
         self.decay_constant = decay_constant
 
     def _compute_strength(
-        self, concept_name: str, current_time: Optional[datetime] = None
+        self, concept_name: str, current_time: datetime | None = None
     ) -> float:
         now = current_time or datetime.now()
         last_usage = self.repo.get_last_usage(concept_name)
@@ -81,7 +80,7 @@ class ForgettingScheduler:
         self.repo.upsert_card(card)
         return card
 
-    def get_decay_report(self) -> List[dict]:
+    def get_decay_report(self) -> list[dict]:
         concepts = self.repo.get_all_concept_names()
         now = datetime.now()
         report = []

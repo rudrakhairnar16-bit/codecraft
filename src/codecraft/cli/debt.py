@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 import typer
 from rich.panel import Panel
 from rich.table import Table
@@ -19,7 +17,7 @@ def debt_report() -> None:
     engine = DebtTrackerEngine(repo)
     report = engine.get_report()
 
-    console.print(Panel(f"[title]Learning Debt Report[/title]"))
+    console.print(Panel("[title]Learning Debt Report[/title]"))
     console.print(f"Total debt items: [bold]{report.total_items}[/bold]")
     console.print(f"Resolved: [success]{report.resolved_items}[/success]")
     console.print(f"Unresolved: [debt]{len(report.unresolved)}[/debt]")
@@ -39,7 +37,7 @@ def debt_report() -> None:
 
 @debt_app.command("list")
 def debt_list(
-    pattern: Optional[str] = typer.Option(None, "--type", "-t", help="Filter by pattern type"),
+    pattern: str | None = typer.Option(None, "--type", "-t", help="Filter by pattern type"),
 ) -> None:
     repo = get_repo()
     engine = DebtTrackerEngine(repo)
@@ -73,7 +71,8 @@ def debt_list(
 
 @debt_app.command("challenge")
 def debt_challenge(
-    item_id: Optional[int] = typer.Argument(None, help="Debt item index from list"),
+    item_id: int | None = typer.Argument(None, help="Debt item index from list"),
+    domain: str = typer.Option("gaming", "--domain", "-d", help="Domain context for practice"),
 ) -> None:
     repo = get_repo()
     engine = DebtTrackerEngine(repo)
@@ -93,11 +92,13 @@ def debt_challenge(
 
     console.print(Panel(f"[title]Challenge: {challenge.title}[/title]"))
     console.print(f"[info]Description:[/info] {challenge.description}")
-    console.print(f"\n[debt]Your current code:[/debt]")
+    console.print("\n[debt]Your current code:[/debt]")
     console.print(Panel(challenge.code_snippet, border_style="red"))
-    console.print(f"\n[success]Goal:[/success] Rewrite using the suggested approach")
+    console.print("\n[success]Goal:[/success] Rewrite using the suggested approach")
     console.print(Panel(challenge.expected_solution, border_style="green"))
-    console.print(f"\n[info]Hints:[/info]")
+    console.print("\n[info]Hints:[/info]")
     for h in challenge.hints:
         console.print(f"  [warning]->[/warning] {h}")
     console.print(f"\nSource: [path]{item.file_path}:{item.pattern_location}[/path]")
+    practice_cmd = f"codecraft practice start {challenge.title.split()[0].lower()} --domain {domain}"
+    console.print(f"\n[info]Practice:[/info] {practice_cmd}")

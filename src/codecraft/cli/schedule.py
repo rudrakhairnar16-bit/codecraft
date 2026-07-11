@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Optional
-
 import typer
 from rich.panel import Panel
 from rich.table import Table
@@ -82,12 +79,12 @@ def review_concept(
 
     card = scheduler.after_review(concept, correct)
     status = "[success]Correct![/success]" if correct else "[debt]Incorrect — will review sooner.[/debt]"
-    next_in = (card.next_review - datetime.now()).days if card.next_review else 1
     console.print(f"[title]Review: {concept}[/title]")
     console.print(status)
     console.print(f"Ease factor: {card.ease_factor:.2f}")
     console.print(f"Interval: [bold]{card.interval_days}d[/bold]")
-    console.print(f"Next review: [info]{card.next_review.strftime('%Y-%m-%d') if card.next_review else 'ASAP'}[/info]")
+    next_review = card.next_review.strftime('%Y-%m-%d') if card.next_review else 'ASAP'
+    console.print(f"Next review: [info]{next_review}[/info]")
     console.print(f"Repetitions: {card.repetitions}")
 
     if not correct:
@@ -95,7 +92,7 @@ def review_concept(
         remix = RemixEngine(repo)
         challenge = remix.generate_review_exercise(concept)
         if challenge:
-            console.print(f"\n[warning]Here's a quick refresher:[/warning]")
+            console.print("\n[warning]Here's a quick refresher:[/warning]")
             console.print(Panel(challenge.description[:200], border_style="yellow"))
 
 

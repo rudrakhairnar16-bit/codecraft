@@ -3,7 +3,6 @@ from __future__ import annotations
 import ast
 import hashlib
 from pathlib import Path
-from typing import Optional, Tuple
 
 
 class ASTParseError(Exception):
@@ -34,7 +33,7 @@ def file_hash(path: Path) -> str:
     return h.hexdigest()[:16]
 
 
-def file_stats(path: Path) -> Tuple[int, int]:
+def file_stats(path: Path) -> tuple[int, int]:
     text = path.read_text(encoding="utf-8", errors="replace")
     lines = len(text.splitlines())
     size = len(text.encode("utf-8"))

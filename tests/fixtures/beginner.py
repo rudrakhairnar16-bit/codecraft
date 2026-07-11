@@ -23,10 +23,10 @@ while count < 5:
 
 try:
     result = 10 / 0
-except:
+except:  # noqa: E722
     print("Something went wrong")
 
-f = open("data.txt", "r")
+f = open("data.txt")
 content = f.read()
 f.close()
 print(content)

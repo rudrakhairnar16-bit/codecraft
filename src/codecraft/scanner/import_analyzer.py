@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import ast
-from typing import Dict, List, Set
 
 
 class ImportAnalyzer(ast.NodeVisitor):
     def __init__(self):
-        self.imports: List[str] = []
-        self.modules: Set[str] = set()
-        self.names: Set[str] = set()
-        self.stdlib_modules: Set[str] = {
+        self.imports: list[str] = []
+        self.modules: set[str] = set()
+        self.names: set[str] = set()
+        self.stdlib_modules: set[str] = {
             "abc", "ast", "asyncio", "base64", "collections", "contextlib",
             "copy", "csv", "datetime", "decimal", "enum", "functools",
             "glob", "hashlib", "heapq", "html", "http", "importlib",
@@ -21,7 +20,7 @@ class ImportAnalyzer(ast.NodeVisitor):
             "time", "traceback", "typing", "unittest", "urllib", "uuid",
             "warnings", "weakref", "xml", "zipfile",
         }
-        self.third_party: Set[str] = set()
+        self.third_party: set[str] = set()
 
     def analyze(self, tree: ast.AST) -> dict:
         self.imports = []

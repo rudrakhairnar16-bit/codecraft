@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 import ast
-from typing import Dict, List, Set
 
-from codecraft.models.concept import ConceptTaxonomy
 from codecraft.models.file import FileConcept
 
 
 class ConceptExtractor(ast.NodeVisitor):
     def __init__(self):
-        self.concepts: Dict[str, int] = {}
-        self._imported_names: Set[str] = set()
-        self._imported_modules: Set[str] = set()
+        self.concepts: dict[str, int] = {}
+        self._imported_names: set[str] = set()
+        self._imported_modules: set[str] = set()
         self._has_decorator = False
         self._decorator_count = 0
         self._class_count = 0
@@ -25,7 +23,7 @@ class ConceptExtractor(ast.NodeVisitor):
         self._lambda_count = 0
         self._comprehension_count = 0
 
-    def extract(self, tree: ast.AST) -> Dict[str, FileConcept]:
+    def extract(self, tree: ast.AST) -> dict[str, FileConcept]:
         self.concepts = {}
         self._imported_names = set()
         self._imported_modules = set()

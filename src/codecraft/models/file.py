@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
 
 
 @dataclass
@@ -23,7 +22,7 @@ class FileRecord:
     first_scanned: datetime = field(default_factory=datetime.now)
     last_modified: datetime = field(default_factory=datetime.now)
     last_scanned: datetime = field(default_factory=datetime.now)
-    concepts: Dict[str, FileConcept] = field(default_factory=dict)
+    concepts: dict[str, FileConcept] = field(default_factory=dict)
     complexity: float = 0.0
     import_count: int = 0
 
@@ -31,9 +30,9 @@ class FileRecord:
 @dataclass
 class FileReport:
     path: Path
-    concepts: List[str]
-    debt_items: List[str]
+    concepts: list[str]
+    debt_items: list[str]
     complexity: float
     lines: int
-    imports: List[str]
-    errors: List[str] = field(default_factory=list)
+    imports: list[str]
+    errors: list[str] = field(default_factory=list)

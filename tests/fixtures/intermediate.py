@@ -1,7 +1,6 @@
 """An intermediate-level Python file for testing concept extraction."""
 
-from collections import defaultdict, Counter
-import os
+from collections import Counter, defaultdict
 from pathlib import Path
 
 
@@ -15,7 +14,7 @@ def process_data(items: list) -> dict:
 
 def read_file_safe(path):
     try:
-        with open(path, "r") as f:
+        with open(path) as f:
             return [line.strip() for line in f if line.strip()]
     except FileNotFoundError:
         return []

@@ -3,13 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
 
 
 @dataclass
 class DebtItem:
-    id: Optional[int] = None
-    file_path: Optional[Path] = None
+    id: int | None = None
+    file_path: Path | None = None
     pattern_type: str = ""
     pattern_location: str = ""
     old_snippet: str = ""
@@ -19,7 +18,7 @@ class DebtItem:
     tier_gap: int = 1
     resolved: bool = False
     created: datetime = field(default_factory=datetime.now)
-    resolved_at: Optional[datetime] = None
+    resolved_at: datetime | None = None
 
 
 @dataclass
@@ -27,11 +26,11 @@ class DebtReport:
     total_items: int = 0
     resolved_items: int = 0
     by_type: dict = field(default_factory=dict)
-    items: List[DebtItem] = field(default_factory=list)
+    items: list[DebtItem] = field(default_factory=list)
     score: float = 0.0
 
     @property
-    def unresolved(self) -> List[DebtItem]:
+    def unresolved(self) -> list[DebtItem]:
         return [i for i in self.items if not i.resolved]
 
     @property

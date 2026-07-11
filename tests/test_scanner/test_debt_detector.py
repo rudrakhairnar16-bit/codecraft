@@ -1,8 +1,5 @@
 from pathlib import Path
 
-import pytest
-
-from codecraft.scanner.ast_parser import parse_file
 from codecraft.scanner.debt_detector import DebtDetector
 
 

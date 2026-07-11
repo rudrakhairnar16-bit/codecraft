@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import duckdb
 
 from codecraft.models.challenge import ChallengeResult
-from codecraft.models.concept import ConceptTaxonomy
 from codecraft.models.debt import DebtItem
 from codecraft.models.file import FileConcept, FileRecord
 from codecraft.models.review import SpacedRepetitionCard
@@ -44,7 +42,7 @@ class Repository:
             ],
         )
 
-    def get_file(self, path: Path) -> Optional[FileRecord]:
+    def get_file(self, path: Path) -> FileRecord | None:
         row = self.conn.execute(
             "SELECT * FROM files WHERE path = ?", [str(path)]
         ).fetchone()
@@ -62,7 +60,7 @@ class Repository:
             import_count=row[8],
         )
 
-    def get_all_files(self) -> List[FileRecord]:
+    def get_all_files(self) -> list[FileRecord]:
         rows = self.conn.execute("SELECT * FROM files ORDER BY path").fetchall()
         return [
             FileRecord(
@@ -80,7 +78,7 @@ class Repository:
         ]
 
     def upsert_file_concepts(
-        self, file_path: Path, concepts: Dict[str, FileConcept]
+        self, file_path: Path, concepts: dict[str, FileConcept]
     ) -> None:
         for name, fc in concepts.items():
             self.conn.execute(
@@ -94,7 +92,7 @@ class Repository:
                 [str(file_path), name, fc.occurrences, fc.first_seen, fc.last_seen],
             )
 
-    def get_file_concepts(self, file_path: Path) -> Dict[str, FileConcept]:
+    def get_file_concepts(self, file_path: Path) -> dict[str, FileConcept]:
         rows = self.conn.execute(
             "SELECT concept_name, occurrences, first_seen, last_seen FROM file_concepts WHERE file_path = ?",
             [str(file_path)],
@@ -109,13 +107,13 @@ class Repository:
             for r in rows
         }
 
-    def get_all_concept_names(self) -> List[str]:
+    def get_all_concept_names(self) -> list[str]:
         rows = self.conn.execute(
             "SELECT DISTINCT concept_name FROM file_concepts ORDER BY concept_name"
         ).fetchall()
         return [r[0] for r in rows]
 
-    def get_last_usage(self, concept_name: str) -> Optional[datetime]:
+    def get_last_usage(self, concept_name: str) -> datetime | None:
         row = self.conn.execute(
             "SELECT MAX(last_seen) FROM file_concepts WHERE concept_name = ?",
             [concept_name],
@@ -155,13 +153,13 @@ class Repository:
             [datetime.now(), item_id],
         )
 
-    def get_unresolved_debt(self) -> List[DebtItem]:
+    def get_unresolved_debt(self) -> list[DebtItem]:
         rows = self.conn.execute(
             "SELECT * FROM debt_items WHERE resolved = FALSE ORDER BY difficulty DESC"
         ).fetchall()
         return [self._row_to_debt_item(r) for r in rows]
 
-    def get_all_debt_items(self) -> List[DebtItem]:
+    def get_all_debt_items(self) -> list[DebtItem]:
         rows = self.conn.execute(
             "SELECT * FROM debt_items ORDER BY created DESC"
         ).fetchall()
@@ -201,7 +199,7 @@ class Repository:
 
     def get_challenge_history(
         self, concept_name: str, limit: int = 20
-    ) -> List[dict]:
+    ) -> list[dict]:
         rows = self.conn.execute(
             """
             SELECT correct, hints_used, time_taken_seconds, created
@@ -246,7 +244,7 @@ class Repository:
             ],
         )
 
-    def get_card(self, concept_name: str) -> Optional[SpacedRepetitionCard]:
+    def get_card(self, concept_name: str) -> SpacedRepetitionCard | None:
         row = self.conn.execute(
             "SELECT * FROM spaced_repetition WHERE concept_name = ?",
             [concept_name],
@@ -263,7 +261,7 @@ class Repository:
             strength=row[6],
         )
 
-    def get_all_cards(self) -> List[SpacedRepetitionCard]:
+    def get_all_cards(self) -> list[SpacedRepetitionCard]:
         rows = self.conn.execute(
             "SELECT * FROM spaced_repetition ORDER BY next_review ASC"
         ).fetchall()
@@ -280,7 +278,7 @@ class Repository:
             for r in rows
         ]
 
-    def get_concept_timeline(self, concept_name: str) -> List[dict]:
+    def get_concept_timeline(self, concept_name: str) -> list[dict]:
         rows = self.conn.execute(
             """
             SELECT f.path, fc.occurrences, fc.first_seen, fc.last_seen

@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import IntEnum
-from typing import Dict, List
 
 
 class Tier(IntEnum):
@@ -24,7 +23,7 @@ class Concept:
 
 
 class ConceptTaxonomy:
-    _concepts: Dict[str, Concept] = {}
+    _concepts: dict[str, Concept] = {}
 
     @classmethod
     def register(cls, name: str, tier: Tier, category: str, description: str = "") -> Concept:
@@ -39,11 +38,11 @@ class ConceptTaxonomy:
         return cls._concepts[name]
 
     @classmethod
-    def all(cls) -> List[Concept]:
+    def all(cls) -> list[Concept]:
         return sorted(cls._concepts.values())
 
     @classmethod
-    def by_tier(cls, tier: Tier) -> List[Concept]:
+    def by_tier(cls, tier: Tier) -> list[Concept]:
         return [c for c in cls.all() if c.tier == tier]
 
 

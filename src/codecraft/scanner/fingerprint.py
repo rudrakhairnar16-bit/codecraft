@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List
 
 
 @dataclass
@@ -11,10 +10,10 @@ class FileFingerprint:
     hash: str
     size: int
     lines: int
-    concepts: Dict[str, int]
-    debt_patterns: List[str]
+    concepts: dict[str, int]
+    debt_patterns: list[str]
     complexity: float
-    imports: List[str]
+    imports: list[str]
     import_count: int
     has_main_guard: bool
     has_docstring: bool

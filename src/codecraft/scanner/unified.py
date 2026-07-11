@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional
 
 from codecraft.models.file import FileReport
 from codecraft.scanner.ast_parser import ASTParseError, file_hash, file_stats, parse_file
@@ -15,11 +14,11 @@ from codecraft.scanner.import_analyzer import ImportAnalyzer
 class UnifiedScanner:
     def __init__(self):
         self.concept_extractor = ConceptExtractor()
-        self.debt_detector: Optional[DebtDetector] = None
+        self.debt_detector: DebtDetector | None = None
         self.complexity_analyzer = ComplexityAnalyzer()
         self.import_analyzer = ImportAnalyzer()
 
-    def scan_file(self, path: Path) -> Optional[FileReport]:
+    def scan_file(self, path: Path) -> FileReport | None:
         if not path.exists():
             return None
         if path.suffix != ".py":
@@ -61,7 +60,7 @@ class UnifiedScanner:
                 errors=["Failed to parse"],
             )
 
-    def fingerprint_file(self, path: Path) -> Optional[FileFingerprint]:
+    def fingerprint_file(self, path: Path) -> FileFingerprint | None:
         report = self.scan_file(path)
         if report is None:
             return None
@@ -69,7 +68,6 @@ class UnifiedScanner:
         h = file_hash(path)
         size, lines = file_stats(path)
 
-        source = path.read_text(encoding="utf-8", errors="replace")
         tree = parse_file(path)
 
         import ast
@@ -115,8 +113,8 @@ class UnifiedScanner:
 
     def scan_directory(
         self, directory: Path, pattern: str = "**/*.py", ignore_hidden: bool = True
-    ) -> List[FileReport]:
-        reports: List[FileReport] = []
+    ) -> list[FileReport]:
+        reports: list[FileReport] = []
         for path in sorted(directory.glob(pattern)):
             if ignore_hidden and any(part.startswith(".") for part in path.parts):
                 continue

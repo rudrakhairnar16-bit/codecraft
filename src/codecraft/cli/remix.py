@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 import typer
 from rich.panel import Panel
 from rich.table import Table
@@ -45,7 +43,7 @@ def show_gaps(
 @remix_app.command("generate")
 def generate_exercise(
     concept: str = typer.Argument(..., help="Concept to practice"),
-    domain: Optional[str] = typer.Option(None, "--domain", "-d", help="Target domain"),
+    domain: str | None = typer.Option(None, "--domain", "-d", help="Target domain"),
 ) -> None:
     repo = get_repo()
     engine = RemixEngine(repo)
@@ -59,11 +57,11 @@ def generate_exercise(
     console.print(Panel(f"[title]Transfer Exercise: {challenge.title}[/title]"))
     console.print(f"[domain]Domain:[/domain] {challenge.domain}")
     console.print(f"[info]Concept:[/info] {challenge.concept_name}")
-    console.print(f"\n[bold]Description:[/bold]")
+    console.print("\n[bold]Description:[/bold]")
     console.print(challenge.description)
-    console.print(f"\n[bold]Code Stub:[/bold]")
+    console.print("\n[bold]Code Stub:[/bold]")
     console.print(Panel(challenge.code_snippet, border_style="cyan"))
-    console.print(f"\n[info]Hints:[/info]")
+    console.print("\n[info]Hints:[/info]")
     for h in challenge.hints:
         console.print(f"  [warning]->[/warning] {h}")
 
@@ -112,7 +110,7 @@ def generate_review(
 
     console.print(Panel(f"[title]Review Exercise: {challenge.title}[/title]"))
     console.print(f"[domain]Domain:[/domain] {challenge.domain}")
-    console.print(f"\n[bold]Description:[/bold]")
+    console.print("\n[bold]Description:[/bold]")
     console.print(challenge.description)
-    console.print(f"\n[bold]Code Stub:[/bold]")
+    console.print("\n[bold]Code Stub:[/bold]")
     console.print(Panel(challenge.code_snippet, border_style="cyan"))

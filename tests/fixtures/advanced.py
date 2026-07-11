@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
-from typing import AsyncIterator, List, Optional
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from functools import lru_cache
-import contextlib
 
 
 @dataclass(frozen=True)
@@ -19,7 +18,7 @@ class Config:
 
 class Repository(ABC):
     @abstractmethod
-    async def get(self, key: str) -> Optional[dict]:
+    async def get(self, key: str) -> dict | None:
         ...
 
     @abstractmethod
@@ -31,14 +30,14 @@ class InMemoryRepo(Repository):
     def __init__(self):
         self._store: dict[str, dict] = {}
 
-    async def get(self, key: str) -> Optional[dict]:
+    async def get(self, key: str) -> dict | None:
         return self._store.get(key)
 
     async def store(self, key: str, value: dict) -> None:
         self._store[key] = value
 
 
-async def stream_data(urls: List[str]) -> AsyncIterator[dict]:
+async def stream_data(urls: list[str]) -> AsyncIterator[dict]:
     for url in urls:
         try:
             data = {"url": url, "status": 200}

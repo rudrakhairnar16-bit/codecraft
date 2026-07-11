@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional
 
 
 class ChallengeType:
@@ -22,10 +21,10 @@ class Challenge:
     description: str
     code_snippet: str
     expected_solution: str
-    hints: List[str] = field(default_factory=list)
+    hints: list[str] = field(default_factory=list)
     domain: str = "general"
     difficulty: int = 1
-    source_file: Optional[str] = None
+    source_file: str | None = None
 
 
 @dataclass

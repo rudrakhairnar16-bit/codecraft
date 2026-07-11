@@ -1,22 +1,20 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from typing import Optional
 
 import duckdb
 
 
 class Database:
-    _instance: Optional["Database"] = None
+    _instance: Database | None = None
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Path | None = None):
         if db_path is None:
             db_dir = Path.home() / ".codecraft"
             db_dir.mkdir(parents=True, exist_ok=True)
             db_path = db_dir / "codecraft.duckdb"
         self.db_path = db_path
-        self._conn: Optional[duckdb.DuckDBPyConnection] = None
+        self._conn: duckdb.DuckDBPyConnection | None = None
 
     def connect(self) -> duckdb.DuckDBPyConnection:
         if self._conn is None:
@@ -30,7 +28,7 @@ class Database:
             self._conn = None
 
     @classmethod
-    def get_instance(cls) -> "Database":
+    def get_instance(cls) -> Database:
         if cls._instance is None:
             cls._instance = Database()
         return cls._instance

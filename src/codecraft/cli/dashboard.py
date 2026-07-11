@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 import typer
-from rich.panel import Panel
 from rich.table import Table
 from rich.tree import Tree
 

@@ -1,31 +1,29 @@
 from __future__ import annotations
 
 import random
-from typing import Dict, List, Optional, Set
 
 from codecraft.db.repository import Repository
 from codecraft.domains.registry import DomainRegistry
-from codecraft.models.challenge import Challenge, ChallengeType
+from codecraft.models.challenge import Challenge
 
 
 class RemixEngine:
     def __init__(self, repo: Repository):
         self.repo = repo
 
-    def find_gaps(self, threshold: int = 3) -> List[str]:
+    def find_gaps(self, threshold: int = 3) -> list[str]:
         concepts = self.repo.get_all_concept_names()
         gaps = []
         for name in concepts:
             exposure = self.repo.get_exposure_count(name)
-            last_usage = self.repo.get_last_usage(name)
             if exposure is not None and 1 <= exposure <= threshold:
                 gaps.append(name)
         return gaps
 
-    def find_known_concepts(self) -> Set[str]:
+    def find_known_concepts(self) -> set[str]:
         return set(self.repo.get_all_concept_names())
 
-    def find_unused_domains(self, concept_name: str) -> List[str]:
+    def find_unused_domains(self, concept_name: str) -> list[str]:
         used_files = self.repo.get_concept_timeline(concept_name)
         used_domains = set()
         for entry in used_files:
@@ -37,8 +35,8 @@ class RemixEngine:
         return list(all_domains - used_domains)
 
     def generate_exercise(
-        self, concept_name: str, domain_name: Optional[str] = None
-    ) -> Optional[Challenge]:
+        self, concept_name: str, domain_name: str | None = None
+    ) -> Challenge | None:
         domain = None
         if domain_name:
             domain = DomainRegistry.get(domain_name)
@@ -68,7 +66,7 @@ class RemixEngine:
 
     def generate_review_exercise(
         self, concept_name: str
-    ) -> Optional[Challenge]:
+    ) -> Challenge | None:
         unused = self.find_unused_domains(concept_name)
         if unused:
             dname = random.choice(unused)
@@ -91,7 +89,7 @@ class RemixEngine:
             difficulty=1,
         )
 
-    def get_domain_stats(self) -> List[dict]:
+    def get_domain_stats(self) -> list[dict]:
         stats = []
         known = self.find_known_concepts()
         for domain in DomainRegistry.all():

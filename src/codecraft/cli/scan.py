@@ -1,16 +1,12 @@
 from __future__ import annotations
 
+import ast
 import time
 from pathlib import Path
-from typing import Optional
 
 import typer
-from rich.live import Live
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich.tree import Tree
-
-import ast
 
 from codecraft.cli.deps import get_repo
 from codecraft.db.repository import Repository
@@ -93,8 +89,8 @@ def scan_directory(
 
 def _watch_directory(path: Path, scanner: UnifiedScanner, repo: Repository) -> None:
     try:
-        from watchdog.observers import Observer
         from watchdog.events import FileSystemEventHandler
+        from watchdog.observers import Observer
     except ImportError:
         console.print("[error]watchdog not installed. Run: pip install watchdog[/error]")
         raise typer.Exit(1)

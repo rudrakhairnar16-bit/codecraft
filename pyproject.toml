@@ -41,8 +41,15 @@ package-dir = {"" = "src"}
 packages = {find = {where = ["src"]}}
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py310"
+
+[tool.ruff.lint.per-file-ignores]
+"src/codecraft/engines/templates.py" = ["E501"]
+"src/codecraft/db/repository.py" = ["E501"]
+"src/codecraft/domains/pools/*.py" = ["E501"]
+"src/codecraft/scanner/debt_detector.py" = ["E501"]
+"src/codecraft/cli/practice.py" = ["E501"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]

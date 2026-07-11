@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Dict, List, Optional
-
 from codecraft.db.repository import Repository
 from codecraft.models.challenge import Challenge, ChallengeType
 from codecraft.models.debt import DebtItem, DebtReport
@@ -12,7 +9,7 @@ class DebtTrackerEngine:
     def __init__(self, repo: Repository):
         self.repo = repo
 
-    def scan_and_track(self, debt_items: List[DebtItem]) -> DebtReport:
+    def scan_and_track(self, debt_items: list[DebtItem]) -> DebtReport:
         report = DebtReport()
 
         for item in debt_items:
@@ -31,7 +28,7 @@ class DebtTrackerEngine:
         report.resolved_items = sum(1 for i in all_items if i.resolved)
         report.items = all_items
 
-        by_type: Dict[str, int] = {}
+        by_type: dict[str, int] = {}
         for item in all_items:
             if not item.resolved:
                 by_type[item.pattern_type] = by_type.get(item.pattern_type, 0) + 1
@@ -40,7 +37,7 @@ class DebtTrackerEngine:
         report.score = self._compute_score(all_items)
         return report
 
-    def _compute_score(self, items: List[DebtItem]) -> float:
+    def _compute_score(self, items: list[DebtItem]) -> float:
         if not items:
             return 0.0
         unresolved = [i for i in items if not i.resolved]
@@ -53,7 +50,7 @@ class DebtTrackerEngine:
     def get_report(self) -> DebtReport:
         all_items = self.repo.get_all_debt_items()
         unresolved = self.repo.get_unresolved_debt()
-        by_type: Dict[str, int] = {}
+        by_type: dict[str, int] = {}
         for item in unresolved:
             by_type[item.pattern_type] = by_type.get(item.pattern_type, 0) + 1
 

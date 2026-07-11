@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from codecraft.models.challenge import Challenge, ChallengeType
 
@@ -11,12 +11,12 @@ class DomainData:
         self,
         domain_name: str,
         description: str,
-        nouns: List[str],
-        verbs: List[str],
-        adjectives: List[str],
-        sample_data: Optional[List[Dict[str, Any]]] = None,
+        nouns: list[str],
+        verbs: list[str],
+        adjectives: list[str],
+        sample_data: list[dict[str, Any]] | None = None,
         sample_filename: str = "data.txt",
-        sample_lines: Optional[List[str]] = None,
+        sample_lines: list[str] | None = None,
     ):
         self.domain_name = domain_name
         self.description = description
@@ -46,7 +46,7 @@ class DomainData:
         )
 
 
-EXERCISE_TEMPLATES: Dict[str, str] = {
+EXERCISE_TEMPLATES: dict[str, str] = {
     "file_io": (
         "Read a file of {noun} records. "
         "Write a function that opens '{filename}', reads each line, "
@@ -236,7 +236,7 @@ def generate_from_template(
     concept_name: str,
     challenge_type: str = ChallengeType.TRANSFER,
     difficulty: int = 1,
-) -> Optional[Challenge]:
+) -> Challenge | None:
     template = EXERCISE_TEMPLATES.get(concept_name)
     if template is None:
         return None
@@ -251,8 +251,8 @@ def generate_from_template(
 
     hints = [
         f"Think about what {domain_data.domain_name} data structures fit naturally here",
-        f"Start by identifying the input format and desired output",
-        f"Break the problem into steps: parse, transform, output",
+        "Start by identifying the input format and desired output",
+        "Break the problem into steps: parse, transform, output",
     ]
 
     challenge_id = f"remix_{domain_data.domain_name}_{concept_name}"

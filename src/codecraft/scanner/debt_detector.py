@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
-from typing import List, Tuple
 
 from codecraft.models.debt import DebtItem
 
@@ -11,10 +10,10 @@ class DebtDetector(ast.NodeVisitor):
     def __init__(self, source: str, file_path: Path):
         self.source = source
         self.file_path = file_path
-        self.debt_items: List[DebtItem] = []
+        self.debt_items: list[DebtItem] = []
         self._lines = source.splitlines()
 
-    def detect(self, tree: ast.AST) -> List[DebtItem]:
+    def detect(self, tree: ast.AST) -> list[DebtItem]:
         self.debt_items = []
         self.visit(tree)
         return self.debt_items
