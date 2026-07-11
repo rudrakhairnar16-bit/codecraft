@@ -62,7 +62,7 @@ def start_practice(
     challenge = remix.generate_exercise(resolved, domain)
     if challenge is None:
         console.print(f"[error]Could not generate exercise for '{resolved}'[/error]")
-        console.print("[warning]Try:[/warning] list_comprehension, dataclass, enumerate, context_manager, f_strings, if_else")
+        console.print("[warning]Try a beginner concept:[/warning] print_function, input_function, for_loop, if_else, variable_assignment")
         raise typer.Exit(1)
 
     console.print(Panel(f"[bold]Practice: {challenge.title}[/bold]", border_style="cyan"))

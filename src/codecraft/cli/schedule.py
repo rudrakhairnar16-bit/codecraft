@@ -74,6 +74,13 @@ def review_concept(
     concept: str = typer.Argument(..., help="Concept to review"),
     correct: bool = typer.Option(True, "--correct/--incorrect", "-c/-i", help="Did you recall correctly?"),
 ) -> None:
+    from codecraft.models.concept import ConceptTaxonomy
+    all_concepts = {c.name for c in ConceptTaxonomy.all()}
+    if concept not in all_concepts:
+        console.print(f"[error]Unknown concept '{concept}'[/error]")
+        console.print(f"[warning]Available:[/warning] {', '.join(sorted(all_concepts)[:10])}...")
+        raise typer.Exit(1)
+
     repo = get_repo()
     scheduler = ForgettingScheduler(repo)
 
@@ -88,7 +95,6 @@ def review_concept(
     console.print(f"Repetitions: {card.repetitions}")
 
     if not correct:
-        repo = get_repo()
         remix = RemixEngine(repo)
         challenge = remix.generate_review_exercise(concept)
         if challenge:

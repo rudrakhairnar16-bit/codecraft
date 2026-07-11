@@ -23,7 +23,7 @@ def show_gaps(
         console.print("[success]No concept gaps found! You're exploring deeply.[/success]")
         return
 
-    table = Table(title=f"Concept Gaps (used ≤{threshold} times)")
+    table = Table(title=f"Concept Gaps (used <= {threshold} times)")
     table.add_column("Concept", style="concept")
     table.add_column("Exposures")
     table.add_column("Days since last use")

@@ -8,6 +8,19 @@ from codecraft.cli.deps import get_repo
 from codecraft.engines.debt_tracker import DebtTrackerEngine
 from codecraft.utils.colors import console
 
+DEBT_TO_CONCEPT = {
+    "bare_except": "try_except",
+    "broad_except": "try_except",
+    "mutable_default": "function_def",
+    "range_len": "enumerate",
+    "if_elif_chain": "dict_comprehension",
+    "magic_number": "variable_assignment",
+    "too_many_returns": "function_def",
+    "nested_conditional": "if_else",
+    "unused_variable": "variable_assignment",
+    "star_import": "import_basic",
+}
+
 debt_app = typer.Typer(name="debt", no_args_is_help=True)
 
 
@@ -100,5 +113,6 @@ def debt_challenge(
     for h in challenge.hints:
         console.print(f"  [warning]->[/warning] {h}")
     console.print(f"\nSource: [path]{item.file_path}:{item.pattern_location}[/path]")
-    practice_cmd = f"codecraft practice start {challenge.title.split()[0].lower()} --domain {domain}"
+    concept = DEBT_TO_CONCEPT.get(item.pattern_type, item.pattern_type)
+    practice_cmd = f"codecraft practice start {concept} --domain {domain}"
     console.print(f"\n[info]Practice:[/info] {practice_cmd}")

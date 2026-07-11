@@ -98,7 +98,7 @@ def show_heatmap(
     for r in decay_report[:30]:
         strength = r["strength"]
         bar_len = max(1, int(strength * 20))
-        bar = "█" * bar_len + "░" * (20 - bar_len)
+        bar = "#" * bar_len + "-" * (20 - bar_len)
         if strength >= 0.8:
             color = "strength.high"
         elif strength >= 0.6:
