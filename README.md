@@ -1,52 +1,222 @@
 # CodeCraft
 
-Your personal Python skill forge — **scans your code**, **finds gaps**, **generates challenges**, and **schedules reviews**.
+Your personal Python skill forge — **scans your code**, **finds learning gaps**, **generates transfer exercises**, and **schedules spaced repetition reviews** — all from patterns in your own code.
 
 ```
 codecraft scan ~/Desktop/Python
-codecraft debt report
-codecraft remix generate
+codecraft remix generate --new-domain cricket
+codecraft practice path beginner
 codecraft schedule queue
 ```
 
-## Features
+---
 
-- **Code Scanner** — AST-based analysis, detects 76+ concepts, 12 anti-pattern detectors
-- **Debt Tracker** — identifies learning gaps from your own code
-- **Remix Engine** — generates transfer exercises in 20 domains
-- **Spaced Repetition** — SM-2 scheduler for long-term retention
-- **Practice Mode** — inline terminal coding with analysis & scoring
-- **Beginner Path** — step-by-step learning (print → if/else → loops → functions)
+## Setup Guide
 
-## Install
+### Prerequisites
+
+- **Python 3.10+** — check with `python --version`
+- **pip** — comes with Python
+- **Git** — to clone and contribute
+
+### Step 1: Clone
 
 ```bash
-git clone https://github.com/rudra/codecraft.git
+git clone https://github.com/rudrakhairnar16-bit/codecraft.git
 cd codecraft
+```
+
+### Step 2: Install
+
+```bash
+# Basic install
+pip install -e .
+
+# With dev dependencies (tests, linting)
 pip install -e ".[dev]"
+```
+
+### Step 3: Verify
+
+```bash
 codecraft --help
 ```
 
-## Quick Start
+You should see available commands: `scan`, `debt`, `remix`, `schedule`, `dashboard`, `practice`.
+
+### Step 4: Scan your first code
 
 ```bash
-# Scan your code
-codecraft scan ~/Desktop/Python
-
-# See what you're missing
-codecraft debt report
-codecraft remix gaps
-
-# Practice step-by-step
-codecraft practice path beginner
-
-# Generate transfer exercises
-codecraft remix generate --new-domain sports_cricket
+codecraft scan path/to/your/python/project
 ```
 
-## Domains
+### Step 5: Explore
 
-finance, bioinfo, sysadmin, gaming, iot, web_scraping, nlp, cli_tools, data_viz, simulation, audio, image, compilers, networking, crypto, **science**, **sports_cricket**, **travel**, **education**, **health**
+```bash
+# Show your learning debt
+codecraft debt report
+
+# Find concept gaps
+codecraft remix gaps
+
+# Start beginner path
+codecraft practice path beginner
+```
+
+---
+
+## Features
+
+### Code Scanner
+- AST-based analysis reads your `.py` files without executing them
+- Detects **76+ concepts** across 4 tiers (basics → advanced)
+- Identifies **12 anti-patterns** (bare except, magic numbers, mutable defaults, etc.)
+- Computes cyclomatic complexity and import dependency graphs
+
+### Debt Tracker
+- Aggregates debt items by pattern across your codebase
+- Scores resolution rate (0–100%)
+- Generates refactor challenges from your own code
+
+### Remix Engine
+- Finds concept gaps (< 3 exposures in your scanned code)
+- Picks an unused domain from 20 available
+- Generates transfer exercises with real-world context and starter code
+
+### Spaced Repetition Scheduler
+- SM-2 adaptation with exponential decay
+- Per-concept strength from last-use timestamps
+- Builds urgency-sorted review queue
+
+### Practice Mode
+- Inline terminal coding — type code, type `submit` to finish
+- Live timer with `extend` for +2 minutes
+- Full solution analysis: parse check, concept detection, complexity, score (0–100), strengths/issues, suggestion
+
+### Beginner Path
+Step-by-step curriculum:
+1. `print_function` → `input_function` → `variable_assignment` → `basic_types`
+2. `string_methods` → `f_strings` → `arithmetic`
+3. `comparisons` → `if_else`
+4. `for_loop` → `while_loop` → `list_ops` → `dict_ops`
+5. `function_def` → `return_value`
+
+---
+
+## CLI Reference
+
+### `scan` — Analyze code
+
+```bash
+codecraft scan <path>              # Scan a directory or file
+```
+
+### `debt` — Learning debt management
+
+```bash
+codecraft debt report              # Show summary of all debt
+codecraft debt list                # List individual debt items
+codecraft debt challenge           # Generate refactor challenge
+```
+
+### `remix` — Transfer exercises
+
+```bash
+codecraft remix gaps               # Find concept gaps
+codecraft remix generate           # Generate an exercise for gap concepts
+codecraft remix domains            # List all domains with coverage
+codecraft remix review <domain>    # Show exercises for a domain
+```
+
+### `practice` — Inline coding practice
+
+```bash
+codecraft practice start <concept>          # Start practice with timer
+codecraft practice list                     # List all available concepts
+codecraft practice path                     # Show available learning paths
+codecraft practice path beginner            # Show beginner path steps
+codecraft practice path beginner --step 3   # Start from step 3
+```
+
+### `schedule` — Spaced repetition
+
+```bash
+codecraft schedule queue           # Show pending review items
+codecraft schedule due             # Show items due now
+codecraft schedule review          # Do a review session
+codecraft schedule decay <days>    # Set decay constant (default: 7)
+```
+
+### `dashboard` — Visualize progress
+
+```bash
+codecraft dashboard summary        # Overall stats
+codecraft dashboard heatmap        # Concept mastery heatmap
+codecraft dashboard trends         # Learning trends over time
+```
+
+---
+
+## Domains (20 total)
+
+| Domain | Context |
+|--------|---------|
+| `finance` | Stocks, transactions, ledgers |
+| `bioinfo` | DNA sequences, gene analysis |
+| `sysadmin` | Logs, configs, system monitoring |
+| `gaming` | Player stats, game mechanics |
+| `iot` | Sensor data, device monitoring |
+| `web_scraping` | HTML parsing, data extraction |
+| `nlp` | Text processing, sentiment analysis |
+| `cli_tools` | CLI argument parsing, file utils |
+| `data_viz` | Charts, plots, data visualization |
+| `simulation` | Monte Carlo, physics sims |
+| `audio` | Sound processing, waveforms |
+| `image` | Pixel manipulation, filters |
+| `compilers` | AST, parsing, code gen |
+| `networking` | Sockets, HTTP, protocols |
+| `crypto` | Hashing, encryption, signing |
+| `science` | Experiments, lab data, formulas |
+| `sports_cricket` | 🏏 Scoring, stats, matches |
+| `travel` | Trip planning, distances, budget |
+| `education` | Grades, quizzes, student records |
+| `health` | Fitness, BMI, diet tracking |
+
+---
+
+## Project Structure
+
+```
+codecraft/
+├── src/codecraft/
+│   ├── cli/              # Typer CLI commands
+│   ├── db/               # DuckDB connection & migrations
+│   ├── domains/          # 20 domain contexts with recipes
+│   ├── engines/          # Debt, Remix, Scheduler, Templates
+│   ├── models/           # Pydantic data models
+│   ├── scanner/          # AST parser, concept extractor, debt detector
+│   └── utils/            # Colors, helpers
+├── tests/                # Pytest test suite (36+ tests)
+├── pyproject.toml        # Project config & dependencies
+└── README.md
+```
+
+---
+
+## Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# With coverage
+pytest --cov=codecraft
+
+# Run specific test file
+pytest tests/test_scanner/test_concept_extractor.py -v
+```
+
+---
 
 ## License
 
