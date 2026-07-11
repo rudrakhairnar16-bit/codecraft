@@ -1,0 +1,56 @@
+[project]
+name = "codecraft"
+version = "0.1.0"
+description = "Your personal Python skill forge — scans your code, finds gaps, generates challenges, and schedules reviews using spaced repetition."
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Rudra", email = "rudra@email.com" },
+]
+dependencies = [
+    "typer>=0.12.0",
+    "rich>=13.0.0",
+    "duckdb>=1.0.0",
+    "jinja2>=3.1.0",
+    "pydantic>=2.0.0",
+    "watchdog>=4.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/rudra/codecraft"
+
+[project.optional-dependencies]
+viz = ["graphviz>=0.20.0", "networkx>=3.0"]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.5.0",
+    "mypy>=1.10.0",
+    "pre-commit>=3.0.0",
+]
+
+[project.scripts]
+codecraft = "codecraft.cli.app:app"
+
+[build-system]
+requires = ["setuptools>=64.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = {find = {where = ["src"]}}
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

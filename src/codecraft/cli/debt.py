@@ -1,0 +1,103 @@
+from __future__ import annotations
+
+from typing import Optional
+
+import typer
+from rich.panel import Panel
+from rich.table import Table
+
+from codecraft.cli.deps import get_repo
+from codecraft.engines.debt_tracker import DebtTrackerEngine
+from codecraft.utils.colors import console
+
+debt_app = typer.Typer(name="debt", no_args_is_help=True)
+
+
+@debt_app.command("report")
+def debt_report() -> None:
+    repo = get_repo()
+    engine = DebtTrackerEngine(repo)
+    report = engine.get_report()
+
+    console.print(Panel(f"[title]Learning Debt Report[/title]"))
+    console.print(f"Total debt items: [bold]{report.total_items}[/bold]")
+    console.print(f"Resolved: [success]{report.resolved_items}[/success]")
+    console.print(f"Unresolved: [debt]{len(report.unresolved)}[/debt]")
+    console.print(f"Debt score: [score]{report.score:.1%}[/score]")
+
+    if report.by_type:
+        table = Table(title="Debt by Pattern")
+        table.add_column("Pattern", style="debt")
+        table.add_column("Count", justify="right")
+        for pattern, count in sorted(report.by_type.items(), key=lambda x: -x[1]):
+            table.add_row(pattern.replace("_", " ").title(), str(count))
+        console.print(table)
+
+    if not report.unresolved:
+        console.print("[success]No unresolved debt! Great job.[/success]")
+
+
+@debt_app.command("list")
+def debt_list(
+    pattern: Optional[str] = typer.Option(None, "--type", "-t", help="Filter by pattern type"),
+) -> None:
+    repo = get_repo()
+    engine = DebtTrackerEngine(repo)
+    report = engine.get_report()
+
+    items = report.unresolved
+    if pattern:
+        items = [i for i in items if i.pattern_type == pattern]
+
+    if not items:
+        console.print("[success]No unresolved debt items matching criteria.[/success]")
+        return
+
+    table = Table(title=f"Unresolved Debt ({len(items)})")
+    table.add_column("ID", style="dim")
+    table.add_column("Pattern", style="debt")
+    table.add_column("File", style="path")
+    table.add_column("Difficulty")
+    table.add_column("Suggestion")
+
+    for i, item in enumerate(items, 1):
+        table.add_row(
+            str(i),
+            item.pattern_type.replace("_", " ").title(),
+            str(item.file_path.name),
+            str(item.difficulty),
+            item.suggestion[:50] + "..." if len(item.suggestion) > 50 else item.suggestion,
+        )
+    console.print(table)
+
+
+@debt_app.command("challenge")
+def debt_challenge(
+    item_id: Optional[int] = typer.Argument(None, help="Debt item index from list"),
+) -> None:
+    repo = get_repo()
+    engine = DebtTrackerEngine(repo)
+    report = engine.get_report()
+
+    if not report.unresolved:
+        console.print("[success]No unresolved debt! Nothing to challenge.[/success]")
+        return
+
+    if item_id is None or item_id < 1 or item_id > len(report.unresolved):
+        item = report.unresolved[0]
+        console.print("[warning]No item specified, showing first unresolved item[/warning]")
+    else:
+        item = report.unresolved[item_id - 1]
+
+    challenge = engine.generate_challenge(item)
+
+    console.print(Panel(f"[title]Challenge: {challenge.title}[/title]"))
+    console.print(f"[info]Description:[/info] {challenge.description}")
+    console.print(f"\n[debt]Your current code:[/debt]")
+    console.print(Panel(challenge.code_snippet, border_style="red"))
+    console.print(f"\n[success]Goal:[/success] Rewrite using the suggested approach")
+    console.print(Panel(challenge.expected_solution, border_style="green"))
+    console.print(f"\n[info]Hints:[/info]")
+    for h in challenge.hints:
+        console.print(f"  [warning]->[/warning] {h}")
+    console.print(f"\nSource: [path]{item.file_path}:{item.pattern_location}[/path]")

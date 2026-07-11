@@ -1,0 +1,354 @@
+from __future__ import annotations
+
+import ast
+from typing import Dict, List, Set
+
+from codecraft.models.concept import ConceptTaxonomy
+from codecraft.models.file import FileConcept
+
+
+class ConceptExtractor(ast.NodeVisitor):
+    def __init__(self):
+        self.concepts: Dict[str, int] = {}
+        self._imported_names: Set[str] = set()
+        self._imported_modules: Set[str] = set()
+        self._has_decorator = False
+        self._decorator_count = 0
+        self._class_count = 0
+        self._function_count = 0
+        self._async_count = 0
+        self._yield_count = 0
+        self._if_elif_count = 0
+        self._try_count = 0
+        self._except_count = 0
+        self._with_count = 0
+        self._lambda_count = 0
+        self._comprehension_count = 0
+
+    def extract(self, tree: ast.AST) -> Dict[str, FileConcept]:
+        self.concepts = {}
+        self._imported_names = set()
+        self._imported_modules = set()
+        self._has_decorator = False
+        self._decorator_count = 0
+        self._class_count = 0
+        self._function_count = 0
+        self._async_count = 0
+        self._yield_count = 0
+        self._if_elif_count = 0
+        self._try_count = 0
+        self._except_count = 0
+        self._with_count = 0
+        self._lambda_count = 0
+        self._comprehension_count = 0
+
+        self.visit(tree)
+        self._apply_heuristics()
+        self._check_stdlib_usage()
+
+        return {
+            name: FileConcept(concept_name=name, occurrences=count)
+            for name, count in self.concepts.items()
+        }
+
+    def _add(self, name: str, count: int = 1) -> None:
+        self.concepts[name] = self.concepts.get(name, 0) + count
+
+    def _apply_heuristics(self) -> None:
+        if self._comprehension_count >= 2:
+            for c in ["list_comprehension", "dict_comprehension", "generator_expression"]:
+                pass
+
+        if self._if_elif_count >= 1:
+            self._add("if_else")
+        if self._try_count > 0:
+            self._add("try_except", self._try_count)
+            if self._except_count >= 2:
+                self._add("exception_multiple")
+        if self._with_count > 0:
+            self._add("context_manager", self._with_count)
+        if self._lambda_count > 0:
+            self._add("lambda", self._lambda_count)
+        if self._function_count > 0:
+            self._add("function_def", self._function_count)
+        if self._class_count > 0:
+            self._add("class_basic", self._class_count)
+        if self._decorator_count > 0:
+            self._add("decorator_basic", self._decorator_count)
+        if self._async_count > 0:
+            self._add("async_await", self._async_count)
+
+    def _check_stdlib_usage(self) -> None:
+        mapping = {
+            "collections": {"defaultdict": "defaultdict", "Counter": "counter"},
+            "functools": {"lru_cache": "lru_cache", "partial": "functools_partial",
+                          "singledispatch": "singledispatch"},
+            "itertools": {},
+            "abc": {"ABC": "abstract_base_class", "abstractmethod": "abstract_base_class"},
+            "enum": {"Enum": "enum"},
+            "heapq": {},
+            "pathlib": {},
+            "contextlib": {},
+            "typing": {},
+            "dataclasses": {"dataclass": "dataclass"},
+            "asyncio": {},
+            "weakref": {},
+        }
+        for mod, names in mapping.items():
+            if mod in self._imported_modules:
+                if mod == "itertools":
+                    self._add("itertools")
+                elif mod == "heapq":
+                    self._add("heapq")
+                elif mod == "pathlib":
+                    self._add("pathlib")
+                elif mod == "contextlib":
+                    self._add("contextlib")
+                elif mod == "asyncio":
+                    self._add("asyncio_gather")
+                    self._add("async_await")
+                elif mod == "weakref":
+                    self._add("weakref")
+                elif mod == "typing":
+                    self._add("type_hints_basic")
+                elif mod == "enum":
+                    self._add("enum")
+                else:
+                    for name, concept in names.items():
+                        if name in self._imported_names:
+                            self._add(concept)
+
+    def visit_Import(self, node: ast.Import) -> None:
+        for alias in node.names:
+            self._imported_modules.add(alias.name.split(".")[0])
+            if alias.asname:
+                self._imported_names.add(alias.asname)
+            else:
+                self._imported_names.add(alias.name.split(".")[0])
+        self._add("import_basic")
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        if node.module:
+            base = node.module.split(".")[0]
+            self._imported_modules.add(base)
+            for alias in node.names:
+                self._imported_names.add(alias.name)
+        self._add("import_basic")
+        self.generic_visit(node)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        self._function_count += 1
+        if node.decorator_list:
+            self._decorator_count += len(node.decorator_list)
+            for dec in node.decorator_list:
+                if isinstance(dec, ast.Call):
+                    self._add("decorator_args")
+                elif isinstance(dec, ast.Name):
+                    if dec.id == "property":
+                        self._add("property_decorator")
+                    elif dec.id == "staticmethod":
+                        self._add("static_class_method")
+                    elif dec.id == "classmethod":
+                        self._add("static_class_method")
+        if node.args.vararg:
+            self._add("args_kwargs")
+        if node.args.kwarg:
+            self._add("args_kwargs")
+        if node.returns:
+            self._add("type_hints_basic")
+        self.generic_visit(node)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self._async_count += 1
+        self._function_count += 1
+        if node.decorator_list:
+            self._decorator_count += len(node.decorator_list)
+        self.generic_visit(node)
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        self._class_count += 1
+        bases = [b for b in node.bases if isinstance(b, ast.Name)]
+        base_names = {b.id for b in bases}
+        if "ABC" in self._imported_names and any(
+            b in base_names for b in ["ABC"]
+        ):
+            self._add("abstract_base_class")
+        self.generic_visit(node)
+
+    def visit_Return(self, node: ast.Return) -> None:
+        self._add("return_value")
+        self.generic_visit(node)
+
+    def visit_Assign(self, node: ast.Assign) -> None:
+        self._add("variable_assignment")
+        self.generic_visit(node)
+
+    def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
+        self._add("variable_assignment")
+        self._add("type_hints_basic")
+        self.generic_visit(node)
+
+    def visit_If(self, node: ast.If) -> None:
+        self._if_elif_count += 1
+        counter = 1
+        current = node
+        while current.orelse and len(current.orelse) == 1 and isinstance(current.orelse[0], ast.If):
+            counter += 1
+            current = current.orelse[0]
+        self._if_elif_count += counter - 1
+        self.generic_visit(node)
+
+    def visit_For(self, node: ast.For) -> None:
+        self._add("for_loop")
+        if isinstance(node.iter, ast.Call):
+            if isinstance(node.iter.func, ast.Name):
+                if node.iter.func.id == "enumerate":
+                    self._add("enumerate")
+                elif node.iter.func.id == "zip":
+                    self._add("zip_function")
+                elif node.iter.func.id == "range":
+                    pass
+            elif isinstance(node.iter.func, ast.Attribute):
+                if node.iter.func.attr == "items":
+                    self._add("dict_ops")
+        self.generic_visit(node)
+
+    def visit_While(self, node: ast.While) -> None:
+        self._add("while_loop")
+        self.generic_visit(node)
+
+    def visit_With(self, node: ast.With) -> None:
+        self._with_count += 1
+        self.generic_visit(node)
+
+    def visit_Try(self, node: ast.Try) -> None:
+        self._try_count += 1
+        self._except_count += len(node.handlers)
+        self.generic_visit(node)
+
+    def visit_Call(self, node: ast.Call) -> None:
+        func = node.func
+        if isinstance(func, ast.Name):
+            if func.id == "print":
+                self._add("print_function")
+            elif func.id == "input":
+                self._add("input_function")
+            elif func.id == "map":
+                self._add("map_filter_reduce")
+            elif func.id == "filter":
+                self._add("map_filter_reduce")
+            elif func.id == "reduce":
+                self._add("map_filter_reduce")
+            elif func.id == "enumerate":
+                self._add("enumerate")
+            elif func.id == "zip":
+                self._add("zip_function")
+            elif func.id == "open":
+                self._add("file_io")
+            elif func.id == "super":
+                self._add("class_basic")
+            elif func.id == "isinstance":
+                self._add("type_hints_basic")
+        elif isinstance(func, ast.Attribute):
+            if func.attr in ("split", "join", "upper", "lower", "strip", "replace",
+                             "startswith", "endswith", "find", "format"):
+                self._add("string_methods")
+            elif func.attr in ("append", "extend", "insert", "remove", "pop", "sort"):
+                self._add("list_ops")
+            elif func.attr in ("get", "setdefault", "keys", "values", "items", "update"):
+                self._add("dict_ops")
+            elif func.attr == "format":
+                self._add("str_format")
+            elif func.attr in ("union", "intersection", "difference", "symmetric_difference"):
+                self._add("set_ops")
+        self.generic_visit(node)
+
+    def visit_ListComp(self, node: ast.ListComp) -> None:
+        self._comprehension_count += 1
+        self._add("list_comprehension")
+        self.generic_visit(node)
+
+    def visit_DictComp(self, node: ast.DictComp) -> None:
+        self._comprehension_count += 1
+        self._add("dict_comprehension")
+        self.generic_visit(node)
+
+    def visit_SetComp(self, node: ast.SetComp) -> None:
+        self._add("set_ops")
+        self.generic_visit(node)
+
+    def visit_GeneratorExp(self, node: ast.GeneratorExp) -> None:
+        self._comprehension_count += 1
+        self._add("generator_expression")
+        self.generic_visit(node)
+
+    def visit_Lambda(self, node: ast.Lambda) -> None:
+        self._lambda_count += 1
+        self.generic_visit(node)
+
+    def visit_Yield(self, node: ast.Yield) -> None:
+        self._yield_count += 1
+        self._add("yield_generator")
+        self.generic_visit(node)
+
+    def visit_YieldFrom(self, node: ast.YieldFrom) -> None:
+        self._yield_count += 1
+        self._add("yield_from")
+        self.generic_visit(node)
+
+    def visit_Match(self, node: ast.Match) -> None:
+        self._add("match_case")
+        self.generic_visit(node)
+
+    def visit_AugAssign(self, node: ast.AugAssign) -> None:
+        self._add("variable_assignment")
+        self.generic_visit(node)
+
+    def visit_BinOp(self, node: ast.BinOp) -> None:
+        self._add("arithmetic")
+        self.generic_visit(node)
+
+    def visit_Compare(self, node: ast.Compare) -> None:
+        self._add("comparisons")
+        self.generic_visit(node)
+
+    def visit_BoolOp(self, node: ast.BoolOp) -> None:
+        self._add("boolean_ops")
+        self.generic_visit(node)
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:
+        if node.attr == "__slots__":
+            self._add("slots")
+        self.generic_visit(node)
+
+    def visit_Subscript(self, node: ast.Subscript) -> None:
+        if isinstance(node.slice, ast.Slice):
+            self._add("slicing")
+        self.generic_visit(node)
+
+    def visit_Delete(self, node: ast.Delete) -> None:
+        self.generic_visit(node)
+
+    def visit_Tuple(self, node: ast.Tuple) -> None:
+        if isinstance(node.ctx, ast.Store):
+            self._add("tuple_unpacking")
+        self.generic_visit(node)
+
+    def visit_Starred(self, node: ast.Starred) -> None:
+        self._add("tuple_unpacking")
+        self.generic_visit(node)
+
+    def visit_JoinedStr(self, node: ast.JoinedStr) -> None:
+        self._add("f_strings")
+        self.generic_visit(node)
+
+    def visit_Raise(self, node: ast.Raise) -> None:
+        if node.cause:
+            self._add("exception_chaining")
+        self.generic_visit(node)
+
+    def visit_Constant(self, node: ast.Constant) -> None:
+        if isinstance(node.value, (int, float, str, bool, type(None))):
+            self._add("basic_types")
+        self.generic_visit(node)
