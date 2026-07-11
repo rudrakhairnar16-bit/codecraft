@@ -75,6 +75,28 @@ CREATE TABLE IF NOT EXISTS spaced_repetition (
     last_review TIMESTAMP,
     strength DOUBLE DEFAULT 1.0
 );
+
+CREATE TABLE IF NOT EXISTS settings (
+    key VARCHAR PRIMARY KEY,
+    value VARCHAR
+);
+
+CREATE TABLE IF NOT EXISTS scan_history (
+    id INTEGER PRIMARY KEY DEFAULT nextval('seq_challenge_history'),
+    scan_type VARCHAR,
+    file_count INTEGER,
+    concept_count INTEGER,
+    debt_count INTEGER,
+    duration_seconds DOUBLE,
+    created TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS suggestions (
+    concept_name VARCHAR PRIMARY KEY,
+    reason VARCHAR,
+    priority INTEGER DEFAULT 0,
+    created TIMESTAMP
+);
 """
 
 
@@ -86,3 +108,12 @@ def run_migrations(conn: duckdb.DuckDBPyConnection) -> None:
 
     if current_version < 1:
         conn.execute("INSERT INTO schema_version (version) VALUES (1)")
+
+    if current_version < 2:
+        from codecraft.models.concept import ConceptTaxonomy
+        for c in ConceptTaxonomy.all():
+            conn.execute(
+                "INSERT OR IGNORE INTO concepts (name, tier, category, description) VALUES (?, ?, ?, ?)",
+                [c.name, c.tier.value, c.category, c.description],
+            )
+        conn.execute("INSERT INTO schema_version (version) VALUES (2)")

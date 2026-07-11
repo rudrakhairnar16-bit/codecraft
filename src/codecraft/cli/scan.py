@@ -25,6 +25,8 @@ def scan_directory(
     path: Path = typer.Argument(".", help="Directory to scan"),
     recursive: bool = typer.Option(True, "-r", "--recursive", help="Scan recursively"),
     watch: bool = typer.Option(False, "-w", "--watch", help="Watch for file changes"),
+    dry_run: bool = typer.Option(False, "--dry-run", "-n", help="Preview without persisting"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
 ) -> None:
     pattern = "**/*.py" if recursive else "*.py"
     scanner = UnifiedScanner()
@@ -35,7 +37,8 @@ def scan_directory(
         console.print(f"[warning]No .py files found in {path}[/warning]")
         raise typer.Exit()
 
-    console.print(f"[title]Scanning {len(files)} Python files...[/title]")
+    if not json_output:
+        console.print(f"[title]Scanning {len(files)} Python files...[/title]")
 
     scanned = 0
     for file in files:
@@ -45,6 +48,12 @@ def scan_directory(
         if report and not report.errors:
             fhash = file_hash(file)
             size, lines = file_stats(file)
+
+            if dry_run:
+                console.print(f"  [dim]{file}[/dim] - {len(report.concepts)} concepts, {len(report.debt_items)} debts")
+                scanned += 1
+                continue
+
             record = FileRecord(
                 path=file,
                 hash=fhash,
@@ -68,6 +77,17 @@ def scan_directory(
             debt_tracker = DebtTrackerEngine(repo)
             debt_tracker.scan_and_track(debt_items)
             scanned += 1
+
+    if json_output:
+        import json as _json
+        data = {"files_scanned": scanned}
+        console.print(_json.dumps(data))
+        return
+
+    if dry_run:
+        console.print(f"[info]Dry run complete. {scanned} files would be scanned.[/info]")
+        console.print("[info]Remove --dry-run to persist to database.[/info]")
+        return
 
     console.print(f"[success]Scanned {scanned} files successfully[/success]")
 
@@ -126,14 +146,34 @@ def scan_single(
         console.print(f"[error]Could not scan {file}[/error]")
         raise typer.Exit(1)
 
-    tree = Tree(f"[title]{file.name}[/title]")
-    concepts = tree.add("[concept]Concepts[/concept]")
-    for c in report.concepts:
-        concepts.add(c)
+    repo = get_repo()
+    fhash = file_hash(file)
+    size, lines = file_stats(file)
+    record = FileRecord(path=file, hash=fhash, size=size, lines=lines)
+    record.complexity = report.complexity
+    record.import_count = len(report.imports)
+    repo.upsert_file(record)
 
-    debt = tree.add("[debt]Debt Patterns[/debt]")
+    import ast
+    source = file.read_text(encoding="utf-8", errors="replace")
+    tree_ast = ast.parse(source)
+    concepts = scanner.concept_extractor.extract(tree_ast)
+    if isinstance(concepts, dict):
+        repo.upsert_file_concepts(file, concepts)
+
+    debt_detector = DebtDetector(source, file)
+    debt_items = debt_detector.detect(tree_ast)
+    debt_tracker = DebtTrackerEngine(repo)
+    debt_tracker.scan_and_track(debt_items)
+
+    tree = Tree(f"[title]{file.name}[/title]")
+    concepts_node = tree.add("[concept]Concepts[/concept]")
+    for c in report.concepts:
+        concepts_node.add(c)
+
+    debt_node = tree.add("[debt]Debt Patterns[/debt]")
     for d in report.debt_items:
-        debt.add(f"[debt]{d}[/debt]")
+        debt_node.add(f"[debt]{d}[/debt]")
 
     info = tree.add("Info")
     info.add(f"Complexity: {report.complexity}")

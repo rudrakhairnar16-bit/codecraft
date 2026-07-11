@@ -188,37 +188,91 @@ class Repository:
             VALUES (?, ?, ?, ?, ?, ?)
             """,
             [
-                result.challenge_id,
-                "",
+                result.challenge_type,
+                result.concept_name or "",
                 result.correct,
                 result.hints_used,
                 result.time_taken_seconds,
-                "general",
+                result.domain or "general",
             ],
         )
 
     def get_challenge_history(
-        self, concept_name: str, limit: int = 20
+        self, concept_name: str | None = None, limit: int = 50
     ) -> list[dict]:
-        rows = self.conn.execute(
-            """
-            SELECT correct, hints_used, time_taken_seconds, created
-            FROM challenge_history
-            WHERE concept_name = ?
-            ORDER BY created DESC
-            LIMIT ?
-            """,
-            [concept_name, limit],
-        ).fetchall()
+        if concept_name:
+            rows = self.conn.execute(
+                """
+                SELECT challenge_type, concept_name, correct, hints_used, time_taken_seconds, domain, created
+                FROM challenge_history
+                WHERE concept_name = ?
+                ORDER BY created DESC
+                LIMIT ?
+                """,
+                [concept_name, limit],
+            ).fetchall()
+        else:
+            rows = self.conn.execute(
+                """
+                SELECT challenge_type, concept_name, correct, hints_used, time_taken_seconds, domain, created
+                FROM challenge_history
+                ORDER BY created DESC
+                LIMIT ?
+                """,
+                [limit],
+            ).fetchall()
         return [
             {
-                "correct": r[0],
-                "hints_used": r[1],
-                "time_taken": r[2],
-                "created": r[3],
+                "challenge_type": r[0],
+                "concept_name": r[1],
+                "correct": r[2],
+                "hints_used": r[3],
+                "time_taken": r[4],
+                "domain": r[5],
+                "created": r[6],
             }
             for r in rows
         ]
+
+    def get_practice_stats(self) -> dict:
+        rows = self.conn.execute(
+            """
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN correct THEN 1 ELSE 0 END) as correct,
+                AVG(time_taken_seconds) as avg_time,
+                COUNT(DISTINCT concept_name) as unique_concepts,
+                COUNT(DISTINCT domain) as unique_domains
+            FROM challenge_history
+            """,
+        ).fetchone()
+        return {
+            "total_sessions": rows[0] or 0,
+            "correct_sessions": rows[1] or 0,
+            "avg_time_seconds": round(rows[2] or 0),
+            "unique_concepts": rows[3] or 0,
+            "unique_domains": rows[4] or 0,
+        }
+
+    def get_streak_data(self) -> dict:
+        rows = self.conn.execute(
+            """
+            SELECT DISTINCT DATE(created) as day
+            FROM challenge_history
+            ORDER BY day DESC
+            """,
+        ).fetchall()
+        days = [r[0] for r in rows]
+        streak = 0
+        from datetime import timedelta, date
+        today = date.today()
+        for i, d in enumerate(days):
+            expected = today - timedelta(days=i)
+            if d == expected:
+                streak += 1
+            else:
+                break
+        return {"current_streak": streak, "total_active_days": len(days)}
 
     def upsert_card(self, card: SpacedRepetitionCard) -> None:
         self.conn.execute(
@@ -277,6 +331,18 @@ class Repository:
             )
             for r in rows
         ]
+
+    def get_setting(self, key: str, default: str = "") -> str:
+        row = self.conn.execute(
+            "SELECT value FROM settings WHERE key = ?", [key]
+        ).fetchone()
+        return row[0] if row else default
+
+    def set_setting(self, key: str, value: str) -> None:
+        self.conn.execute(
+            "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+            [key, value],
+        )
 
     def get_concept_timeline(self, concept_name: str) -> list[dict]:
         rows = self.conn.execute(

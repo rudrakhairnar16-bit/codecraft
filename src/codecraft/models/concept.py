@@ -24,6 +24,61 @@ class Concept:
 
 class ConceptTaxonomy:
     _concepts: dict[str, Concept] = {}
+    _prerequisites: dict[str, list[str]] = {
+        "for_loop": ["comparisons", "variable_assignment"],
+        "while_loop": ["comparisons", "variable_assignment"],
+        "list_comprehension": ["for_loop", "list_ops"],
+        "dict_comprehension": ["for_loop", "dict_ops"],
+        "generator_expression": ["for_loop", "yield_generator"],
+        "enumerate": ["for_loop"],
+        "zip_function": ["for_loop", "tuple_unpacking"],
+        "function_def": ["return_value", "variable_assignment"],
+        "args_kwargs": ["function_def"],
+        "lambda": ["function_def"],
+        "map_filter_reduce": ["lambda", "function_def"],
+        "context_manager": ["try_except", "function_def"],
+        "class_basic": ["function_def"],
+        "decorator_basic": ["function_def", "class_basic"],
+        "decorator_args": ["decorator_basic"],
+        "property_decorator": ["class_basic", "function_def"],
+        "static_class_method": ["class_basic", "decorator_basic"],
+        "abstract_base_class": ["class_basic", "import_basic"],
+        "dataclass": ["class_basic"],
+        "named_tuple": ["class_basic", "type_hints_basic"],
+        "typed_dict": ["type_hints_basic"],
+        "type_hints_basic": ["function_def", "basic_types"],
+        "match_case": ["if_else", "tuple_unpacking"],
+        "recursion": ["function_def", "return_value"],
+        "lru_cache": ["function_def", "decorator_basic"],
+        "itertools": ["for_loop", "generator_expression"],
+        "deque": ["list_ops"],
+        "heapq": ["list_ops", "comparisons"],
+        "exception_chaining": ["try_except"],
+        "custom_exception": ["class_basic", "exception_chaining"],
+        "slots": ["class_basic"],
+        "operator_overloading": ["class_basic", "function_def"],
+        "enter_exit": ["class_basic", "context_manager"],
+        "enum": ["class_basic", "import_basic"],
+        "functools_partial": ["function_def", "import_basic"],
+        "metaclass": ["class_basic"],
+        "descriptor": ["class_basic", "operator_overloading"],
+        "async_await": ["function_def", "generator_expression"],
+        "asyncio_gather": ["async_await"],
+        "async_context": ["async_await", "context_manager"],
+        "async_generator": ["async_await", "yield_generator"],
+        "singledispatch": ["function_def", "decorator_basic"],
+        "init_subclass": ["class_basic"],
+        "mixin": ["class_basic"],
+        "weakref": ["import_basic"],
+        "context_var": ["import_basic"],
+        "callable": ["class_basic"],
+        "getattr_protocol": ["class_basic", "descriptor"],
+        "cython_ctypes": ["import_basic"],
+        "async_iterator": ["async_await", "async_generator"],
+        "yield_generator": ["function_def", "for_loop"],
+        "yield_from": ["yield_generator"],
+        "contextlib": ["context_manager", "import_basic"],
+    }
 
     @classmethod
     def register(cls, name: str, tier: Tier, category: str, description: str = "") -> Concept:
@@ -44,6 +99,15 @@ class ConceptTaxonomy:
     @classmethod
     def by_tier(cls, tier: Tier) -> list[Concept]:
         return [c for c in cls.all() if c.tier == tier]
+
+    @classmethod
+    def prerequisites(cls, name: str) -> list[str]:
+        return cls._prerequisites.get(name, [])
+
+    @classmethod
+    def is_ready(cls, name: str, known: set[str]) -> tuple[bool, list[str]]:
+        missing = [p for p in cls.prerequisites(name) if p not in known]
+        return (len(missing) == 0, missing)
 
 
 ALL = ConceptTaxonomy.register
@@ -100,6 +164,7 @@ ALL("named_tuple", Tier.BRANCH, "oop", "NamedTuple and typing.NamedTuple")
 ALL("typed_dict", Tier.BRANCH, "oop", "TypedDict for structured dicts")
 ALL("type_hints_basic", Tier.BRANCH, "types", "Basic type annotations")
 ALL("match_case", Tier.BRANCH, "control_flow", "Structural pattern matching (3.10+)")
+ALL("recursion", Tier.BRANCH, "control_flow", "Recursive functions and base cases")
 ALL("lru_cache", Tier.BRANCH, "functional", "functools.lru_cache for memoization")
 ALL("itertools", Tier.BRANCH, "iterables", "itertools module: chain, cycle, groupby")
 ALL("deque", Tier.BRANCH, "data_structures", "collections.deque for efficient appends")

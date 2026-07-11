@@ -12,13 +12,20 @@ DEBT_TO_CONCEPT = {
     "bare_except": "try_except",
     "broad_except": "try_except",
     "mutable_default": "function_def",
+    "mutable_default_arg": "function_def",
     "range_len": "enumerate",
     "if_elif_chain": "dict_comprehension",
     "magic_number": "variable_assignment",
     "too_many_returns": "function_def",
     "nested_conditional": "if_else",
     "unused_variable": "variable_assignment",
+    "unused_loop_variable": "for_loop",
     "star_import": "import_basic",
+    "missing_return_annotation": "type_hints_basic",
+    "single_line_if_no_else": "if_else",
+    "manual_counter": "enumerate",
+    "list_accumulation": "list_comprehension",
+    "infinite_while_no_break": "while_loop",
 }
 
 debt_app = typer.Typer(name="debt", no_args_is_help=True)

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import ast
+import threading
+import time
+from datetime import datetime
 
 import typer
 from rich.panel import Panel
@@ -8,7 +11,9 @@ from rich.table import Table
 
 from codecraft.cli.deps import get_repo
 from codecraft.engines.remix import RemixEngine
+from codecraft.models.challenge import ChallengeResult
 from codecraft.models.concept import ConceptTaxonomy
+from codecraft.scanner.concept_extractor import ConceptExtractor
 from codecraft.utils.colors import console
 
 practice_app = typer.Typer(name="practice", no_args_is_help=True)
@@ -23,11 +28,11 @@ def _resolve_concept_name(name: str) -> str:
     return name
 
 
-def _read_multiline_input() -> str:
+def _read_multiline_input(timer_expired: threading.Event) -> str:
     lines = []
     console.print("[dim]Type your code below. Type [bold]submit[/bold] on a new line when done. Type [bold]extend[/bold] for +2 min.[/dim]")
     console.print("[dim]----------------------------------------[/dim]")
-    while True:
+    while not timer_expired.is_set():
         try:
             line = input()
             if line.strip().lower() == "submit":
@@ -37,6 +42,8 @@ def _read_multiline_input() -> str:
             lines.append(line)
         except (EOFError, KeyboardInterrupt):
             break
+    if timer_expired.is_set() and not lines:
+        return ""
     return "\n".join(lines)
 
 
@@ -51,6 +58,9 @@ def start_practice(
     timeout_minutes: int = typer.Option(
         5, "--timeout", "-t", help="Time limit in minutes"
     ),
+    difficulty: int = typer.Option(
+        1, "--difficulty", "-D", help="Difficulty level (1-5)"
+    ),
 ) -> None:
     repo = get_repo()
     remix = RemixEngine(repo)
@@ -62,32 +72,51 @@ def start_practice(
     challenge = remix.generate_exercise(resolved, domain)
     if challenge is None:
         console.print(f"[error]Could not generate exercise for '{resolved}'[/error]")
-        console.print("[warning]Try a beginner concept:[/warning] print_function, input_function, for_loop, if_else, variable_assignment")
+        next_steps = _get_beginner_concepts()
+        console.print(f"[warning]Try a beginner concept:[/warning] {', '.join(next_steps[:5])}")
         raise typer.Exit(1)
 
     console.print(Panel(f"[bold]Practice: {challenge.title}[/bold]", border_style="cyan"))
     console.print(f"[info]Concept:[/info] {challenge.concept_name}")
     console.print(f"[info]Domain:[/info] {challenge.domain}")
     console.print(f"[info]Time limit:[/info] {timeout_minutes} minutes")
+    console.print(f"[info]Difficulty:[/info] {difficulty}/5")
     console.print("\n[bold]Problem:[/bold]")
     console.print(challenge.description)
     console.print("\n[bold]Starter code (use or ignore):[/bold]")
     console.print(Panel(challenge.code_snippet, border_style="cyan"))
 
     total_seconds = timeout_minutes * 60
+    timer_expired = threading.Event()
+    timer = threading.Timer(total_seconds, timer_expired.set)
+    timer.daemon = True
+    timer.start()
+
+    start_time = time.time()
     solution_code = ""
     time_left = total_seconds
-    while time_left > 0:
-        console.print(f"\n[info]Time remaining:[/info] {time_left // 60}:{time_left % 60:02d}")
-        code = _read_multiline_input()
+
+    while time_left > 0 and not timer_expired.is_set():
+        mins, secs = divmod(time_left, 60)
+        console.print(f"\n[info]Time remaining:[/info] {mins}:{secs:02d}")
+        code = _read_multiline_input(timer_expired)
 
         if code == "EXTEND":
             time_left += EXTEND_SECONDS
-            console.print(f"[success]Time extended! +2 min. Remaining: {time_left // 60}:{time_left % 60:02d}[/success]")
+            total_seconds += EXTEND_SECONDS
+            timer.cancel()
+            timer = threading.Timer(time_left, timer_expired.set)
+            timer.daemon = True
+            timer.start()
+            mins, secs = divmod(time_left, 60)
+            console.print(f"[success]Time extended! +2 min. Remaining: {mins}:{secs:02d}[/success]")
             continue
 
         solution_code = code
         break
+
+    timer.cancel()
+    elapsed = int(time.time() - start_time)
 
     if not solution_code.strip():
         console.print("[debt]Time's up! Showing analysis with whatever you typed.[/debt]")
@@ -95,6 +124,30 @@ def start_practice(
 
     analysis = _analyze_solution(solution_code, challenge)
     _show_analysis(analysis, challenge, concept=resolved, domain_str=challenge.domain)
+
+    result = ChallengeResult(
+        challenge_id=challenge.id,
+        challenge_type="practice",
+        concept_name=resolved,
+        correct=analysis["score"] >= 70,
+        hints_used=0,
+        time_taken_seconds=elapsed,
+        domain=challenge.domain,
+    )
+    repo.insert_challenge_result(result)
+
+    _display_streak(repo)
+
+
+def _get_beginner_concepts() -> list[str]:
+    from codecraft.models.concept import ConceptTaxonomy
+    return [c.name for c in ConceptTaxonomy.by_tier(1)][:8]
+
+
+def _display_streak(repo) -> None:
+    streak = repo.get_streak_data()
+    if streak["current_streak"] > 1:
+        console.print(f"[success]Streak: {streak['current_streak']} days![/success]")
 
 
 def _analyze_solution(code: str, challenge) -> dict:
@@ -179,56 +232,13 @@ def _compute_complexity(tree: ast.AST) -> int:
 
 
 def _code_uses_concept(code: str, concept_name: str) -> bool:
-    patterns = {
-        "list_comprehension": lambda c: "for" in c and "[" in c and "]" in c and " in " in c,
-        "dict_comprehension": lambda c: "for" in c and "{" in c and "}" in c and ":" in c and " in " in c,
-        "generator_expression": lambda c: "for" in c and "(" in c and ")" in c and " in " in c,
-        "context_manager": lambda c: "with " in c,
-        "enumerate": lambda c: "enumerate(" in c,
-        "zip_function": lambda c: "zip(" in c,
-        "dataclass": lambda c: "dataclass" in c or "from dataclasses import" in c,
-        "match_case": lambda c: "match " in c and "case " in c,
-        "try_except": lambda c: "try:" in c and "except" in c,
-        "file_io": lambda c: 'open(' in c or '.read()' in c or '.write(' in c,
-        "defaultdict": lambda c: "defaultdict" in c,
-        "counter": lambda c: "Counter(" in c or "most_common" in c,
-        "lambda": lambda c: "lambda " in c,
-        "decorator_basic": lambda c: "@" in c,
-        "property_decorator": lambda c: "@property" in c,
-        "class_basic": lambda c: "class " in c,
-        "function_def": lambda c: "def " in c,
-        "type_hints_basic": lambda c: "-> " in c or ": int" in c or ": str" in c,
-        "yield_generator": lambda c: "yield " in c,
-        "args_kwargs": lambda c: "*args" in c or "**kwargs" in c,
-        "f_strings": lambda c: 'f"' in c or "f'" in c,
-        "pathlib": lambda c: "Path(" in c or "from pathlib import" in c,
-        "async_await": lambda c: "async def" in c or "await " in c,
-        "map_filter_reduce": lambda c: "map(" in c or "filter(" in c,
-        "slicing": lambda c: "[" in c and ":" in c and "]" in c,
-        "string_methods": lambda c: ".split(" in c or ".join(" in c or ".upper(" in c or ".lower(" in c or ".strip(" in c,
-        "print_function": lambda c: "print(" in c,
-        "input_function": lambda c: "input(" in c,
-        "if_else": lambda c: "if " in c and ":" in c,
-        "for_loop": lambda c: "for " in c and " in " in c and ":" in c,
-        "while_loop": lambda c: "while " in c and ":" in c,
-        "variable_assignment": lambda c: "=" in c and "==" not in c,
-        "basic_types": lambda c: '"' in c or "'" in c,
-        "boolean_ops": lambda c: " and " in c or " or " in c or " not " in c,
-        "comparisons": lambda c: "==" in c or "!=" in c or ">=" in c or "<=" in c or ">" in c or "<" in c,
-        "arithmetic": lambda c: "+" in c or "-" in c or "*" in c or "/" in c,
-        "return_value": lambda c: "return " in c,
-        "dict_ops": lambda c: "[" in c and "]" in c and "=" in c,
-        "list_ops": lambda c: ".append(" in c or ".extend(" in c or ".insert(" in c or ".remove(" in c or ".pop(" in c,
-        "set_ops": lambda c: ".union(" in c or ".intersection(" in c or ".difference(" in c,
-        "import_basic": lambda c: "import " in c,
-        "tuple_unpacking": lambda c: "," in c and "=" in c and "(" not in c.split("=")[0],
-        "exception_chaining": lambda c: "raise " in c and "from " in c,
-        "decorator_args": lambda c: "@" in c and "(" in c,
-    }
-    checker = patterns.get(concept_name)
-    if checker:
-        return checker(code)
-    return concept_name.replace("_", " ") in code.lower()
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return False
+    ce = ConceptExtractor()
+    concepts = ce.extract(tree)
+    return concept_name in concepts
 
 
 def _show_analysis(analysis: dict, challenge, concept: str = "", domain_str: str = "") -> None:
@@ -375,6 +385,62 @@ def show_path(
         console.print(f"[info]{desc}[/info]")
         console.print(f"[warning]Run:[/warning] codecraft practice start {concept} --domain {domain}")
         start_practice(concept=concept, domain=domain, timeout_minutes=10)
+
+
+def _load_custom_paths() -> dict:
+    paths = {}
+    try:
+        from codecraft.cli.deps import get_repo
+        repo = get_repo()
+        import json
+        raw = repo.get_setting("custom_paths", "{}")
+        parsed = json.loads(raw)
+        for name, data in parsed.items():
+            paths[name] = {
+                "title": data.get("title", f"Custom: {name}"),
+                "steps": data.get("steps", []),
+            }
+    except Exception:
+        pass
+    return paths
+
+
+try:
+    LEARNING_PATHS.update(_load_custom_paths())
+except Exception:
+    pass
+
+
+@practice_app.command("path-create")
+def create_path(
+    name: str = typer.Argument(..., help="Learning path name"),
+    concepts: str = typer.Option(..., "--concepts", "-c", help="Comma-separated concept names"),
+) -> None:
+    repo = get_repo()
+    concept_list = [c.strip() for c in concepts.split(",")]
+    valid = []
+    invalid = []
+    for c in concept_list:
+        resolved = _resolve_concept_name(c)
+        if ConceptTaxonomy.get(resolved):
+            valid.append(resolved)
+        else:
+            invalid.append(c)
+    if invalid:
+        console.print(f"[error]Unknown concepts: {', '.join(invalid)}[/error]")
+        raise typer.Exit(1)
+
+    import json
+    existing = repo.get_setting("custom_paths", "{}")
+    paths = json.loads(existing)
+    paths[name] = {"title": f"Custom: {name}", "steps": [(c, "") for c in valid]}
+    repo.set_setting("custom_paths", json.dumps(paths))
+
+    LEARNING_PATHS[name] = {
+        "title": f"Custom: {name}",
+        "steps": [(c, "") for c in valid],
+    }
+    console.print(f"[success]Created learning path '{name}' with {len(valid)} concepts[/success]")
 
 
 @practice_app.command("list")

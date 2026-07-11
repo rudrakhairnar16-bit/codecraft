@@ -14,10 +14,13 @@ remix_app = typer.Typer(name="remix", no_args_is_help=True)
 @remix_app.command("gaps")
 def show_gaps(
     threshold: int = typer.Option(3, "--threshold", "-t", help="Max exposures to count as a gap"),
+    filter_pattern: str | None = typer.Option(None, "--filter", "-f", help="Filter gaps by name pattern"),
 ) -> None:
     repo = get_repo()
     engine = RemixEngine(repo)
     gaps = engine.find_gaps(threshold)
+    if filter_pattern:
+        gaps = [g for g in gaps if filter_pattern.lower() in g.lower()]
 
     if not gaps:
         console.print("[success]No concept gaps found! You're exploring deeply.[/success]")

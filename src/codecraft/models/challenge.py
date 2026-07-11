@@ -30,7 +30,10 @@ class Challenge:
 @dataclass
 class ChallengeResult:
     challenge_id: str
-    correct: bool
-    hints_used: int
-    time_taken_seconds: int
+    challenge_type: str = "practice"
+    concept_name: str = ""
+    correct: bool = False
+    hints_used: int = 0
+    time_taken_seconds: int = 0
+    domain: str = "general"
     attempted_at: datetime = field(default_factory=datetime.now)

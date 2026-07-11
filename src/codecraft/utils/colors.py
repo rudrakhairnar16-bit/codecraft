@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import os
+
 from rich.console import Console
 from rich.theme import Theme
+
+_NO_COLOR = os.environ.get("NO_COLOR", "").strip() not in ("", "0")
 
 codecraft_theme = Theme(
     {
@@ -26,4 +30,9 @@ codecraft_theme = Theme(
     }
 )
 
-console = Console(theme=codecraft_theme)
+console_args = {"theme": codecraft_theme}
+if _NO_COLOR:
+    console_args["no_color"] = True
+    console_args["force_terminal"] = False
+
+console = Console(**console_args)

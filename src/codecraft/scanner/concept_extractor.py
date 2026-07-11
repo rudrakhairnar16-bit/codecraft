@@ -22,6 +22,10 @@ class ConceptExtractor(ast.NodeVisitor):
         self._with_count = 0
         self._lambda_count = 0
         self._comprehension_count = 0
+        self._current_function: str | None = None
+        self._function_names: set[str] = set()
+        self._class_method_names: set[str] = set()
+        self._class_name: str | None = None
 
     def extract(self, tree: ast.AST) -> dict[str, FileConcept]:
         self.concepts = {}
@@ -39,6 +43,10 @@ class ConceptExtractor(ast.NodeVisitor):
         self._with_count = 0
         self._lambda_count = 0
         self._comprehension_count = 0
+        self._current_function = None
+        self._function_names = set()
+        self._class_method_names = set()
+        self._class_name = None
 
         self.visit(tree)
         self._apply_heuristics()
@@ -78,7 +86,8 @@ class ConceptExtractor(ast.NodeVisitor):
 
     def _check_stdlib_usage(self) -> None:
         mapping = {
-            "collections": {"defaultdict": "defaultdict", "Counter": "counter"},
+            "collections": {"defaultdict": "defaultdict", "Counter": "counter",
+                            "deque": "deque"},
             "functools": {"lru_cache": "lru_cache", "partial": "functools_partial",
                           "singledispatch": "singledispatch"},
             "itertools": {},
@@ -91,6 +100,8 @@ class ConceptExtractor(ast.NodeVisitor):
             "dataclasses": {"dataclass": "dataclass"},
             "asyncio": {},
             "weakref": {},
+            "contextvars": {},
+            "ctypes": {},
         }
         for mod, names in mapping.items():
             if mod in self._imported_modules:
@@ -102,6 +113,10 @@ class ConceptExtractor(ast.NodeVisitor):
                     self._add("pathlib")
                 elif mod == "contextlib":
                     self._add("contextlib")
+                elif mod == "contextvars":
+                    self._add("context_var")
+                elif mod == "ctypes":
+                    self._add("cython_ctypes")
                 elif mod == "asyncio":
                     self._add("asyncio_gather")
                     self._add("async_await")
@@ -109,6 +124,10 @@ class ConceptExtractor(ast.NodeVisitor):
                     self._add("weakref")
                 elif mod == "typing":
                     self._add("type_hints_basic")
+                    if "NamedTuple" in self._imported_names:
+                        self._add("named_tuple")
+                    if "TypedDict" in self._imported_names:
+                        self._add("typed_dict")
                 elif mod == "enum":
                     self._add("enum")
                 else:
@@ -137,6 +156,7 @@ class ConceptExtractor(ast.NodeVisitor):
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self._function_count += 1
+        self._function_names.add(node.name)
         if node.decorator_list:
             self._decorator_count += len(node.decorator_list)
             for dec in node.decorator_list:
@@ -155,14 +175,23 @@ class ConceptExtractor(ast.NodeVisitor):
             self._add("args_kwargs")
         if node.returns:
             self._add("type_hints_basic")
+        if self._class_name is not None:
+            self._class_method_names.add(node.name)
+        old_fn = self._current_function
+        self._current_function = node.name
         self.generic_visit(node)
+        self._current_function = old_fn
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         self._async_count += 1
         self._function_count += 1
+        self._function_names.add(node.name)
         if node.decorator_list:
             self._decorator_count += len(node.decorator_list)
+        old_fn = self._current_function
+        self._current_function = node.name
         self.generic_visit(node)
+        self._current_function = old_fn
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         self._class_count += 1
@@ -172,7 +201,42 @@ class ConceptExtractor(ast.NodeVisitor):
             b in base_names for b in ["ABC"]
         ):
             self._add("abstract_base_class")
+        if any(b in base_names for b in ["Exception", "ValueError", "TypeError", "RuntimeError"]):
+            self._add("custom_exception")
+        if "NamedTuple" in self._imported_names and any(b in base_names for b in ["NamedTuple"]):
+            self._add("named_tuple")
+        if "TypedDict" in self._imported_names and any(b in base_names for b in ["TypedDict"]):
+            self._add("typed_dict")
+        if any(isinstance(k, ast.keyword) and k.arg == "metaclass" for k in node.keywords):
+            self._add("metaclass")
+        if node.name.endswith("Mixin") or node.name.startswith("Mixin"):
+            self._add("mixin")
+        old_cn = self._class_name
+        self._class_name = node.name
+        old_methods = self._class_method_names
+        self._class_method_names = set()
         self.generic_visit(node)
+        if "__call__" in self._class_method_names:
+            self._add("callable")
+        if "__enter__" in self._class_method_names or "__exit__" in self._class_method_names:
+            self._add("enter_exit")
+        if "__get__" in self._class_method_names or "__set__" in self._class_method_names:
+            self._add("descriptor")
+        if "__getattr__" in self._class_method_names or "__getattribute__" in self._class_method_names:
+            self._add("getattr_protocol")
+        if "__init_subclass__" in self._class_method_names:
+            self._add("init_subclass")
+        if "__aenter__" in self._class_method_names or "__aexit__" in self._class_method_names:
+            self._add("async_context")
+        if "__aiter__" in self._class_method_names or "__anext__" in self._class_method_names:
+            self._add("async_iterator")
+        dunders = {"__add__", "__sub__", "__mul__", "__eq__", "__lt__", "__gt__",
+                   "__len__", "__getitem__", "__setitem__", "__contains__",
+                   "__str__", "__repr__", "__iter__", "__next__"}
+        if self._class_method_names & dunders:
+            self._add("operator_overloading")
+        self._class_name = old_cn
+        self._class_method_names = old_methods
 
     def visit_Return(self, node: ast.Return) -> None:
         self._add("return_value")
@@ -210,6 +274,10 @@ class ConceptExtractor(ast.NodeVisitor):
             elif isinstance(node.iter.func, ast.Attribute):
                 if node.iter.func.attr == "items":
                     self._add("dict_ops")
+        self.generic_visit(node)
+
+    def visit_AsyncFor(self, node: ast.AsyncFor) -> None:
+        self._add("async_generator")
         self.generic_visit(node)
 
     def visit_While(self, node: ast.While) -> None:
@@ -260,6 +328,8 @@ class ConceptExtractor(ast.NodeVisitor):
                 self._add("str_format")
             elif func.attr in ("union", "intersection", "difference", "symmetric_difference"):
                 self._add("set_ops")
+        if isinstance(func, ast.Name) and self._current_function and func.id == self._current_function:
+            self._add("recursion")
         self.generic_visit(node)
 
     def visit_ListComp(self, node: ast.ListComp) -> None:
