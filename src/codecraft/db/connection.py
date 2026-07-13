@@ -40,6 +40,7 @@ class Database:
                     pass
 
     def _check_health(self, retries: int = 2) -> None:
+        assert self._conn is not None
         for attempt in range(retries):
             try:
                 self._conn.execute("SELECT 1").fetchone()
@@ -51,12 +52,14 @@ class Database:
                     time.sleep(0.5)
                     self._clean_stale_files()
                     self._conn = duckdb.connect(str(self.db_path))
+                    assert self._conn is not None
                     self._conn.execute("PRAGMA enable_progress_bar")
                 else:
                     self._conn.close()
                     self._conn = None
                     self.reset()
                     self._conn = duckdb.connect(str(self.db_path))
+                    assert self._conn is not None
                     self._conn.execute("PRAGMA enable_progress_bar")
                     self._cleaned = True
                     break

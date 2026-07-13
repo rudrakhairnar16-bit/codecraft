@@ -45,6 +45,7 @@ class _GoParser(TreeSitterParser):
     ]
 
 
-from tree_sitter_go import language as _go_lang_fn
-_GoParser.LANGUAGE_FN = _go_lang_fn
+from tree_sitter_go import language as _go_lang_fn  # noqa: E402
+
+_GoParser.LANGUAGE_FN = _go_lang_fn  # type: ignore[assignment]
 GoParser = _GoParser

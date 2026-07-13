@@ -14,7 +14,7 @@ from codecraft.utils.colors import console
 dashboard_app = typer.Typer(name="dashboard", no_args_is_help=True)
 
 
-@dashboard_app.command("summary")
+@dashboard_app.command("summary", epilog="Example: codecraft dashboard summary")
 def show_summary() -> None:
     repo = get_repo()
     files = repo.get_all_files()
@@ -67,7 +67,7 @@ def show_summary() -> None:
     console.print(tree)
 
 
-@dashboard_app.command("heatmap")
+@dashboard_app.command("heatmap", epilog="Example: codecraft dashboard heatmap --tier 1")
 def show_heatmap(
     tier: int = typer.Option(0, "--tier", "-t", help="Filter by tier (1-4, 0=all)"),
 ) -> None:
@@ -112,7 +112,7 @@ def show_heatmap(
     console.print(table)
 
 
-@dashboard_app.command("trends")
+@dashboard_app.command("trends", epilog="Example: codecraft dashboard trends")
 def show_trends() -> None:
     repo = get_repo()
     concepts = repo.get_all_concept_names()
@@ -123,7 +123,7 @@ def show_trends() -> None:
 
     from codecraft.models.concept import ConceptTaxonomy
 
-    by_tier = {1: [], 2: [], 3: [], 4: []}
+    by_tier: dict[int, list[str]] = {1: [], 2: [], 3: [], 4: []}
     for name in concepts:
         try:
             c = ConceptTaxonomy.get(name)

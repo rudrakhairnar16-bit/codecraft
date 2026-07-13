@@ -4,7 +4,6 @@ from pathlib import Path
 
 import typer
 from rich.panel import Panel
-from rich.table import Table
 
 from codecraft.cli.deps import get_repo
 from codecraft.db.connection import Database
@@ -47,13 +46,13 @@ def init_all(
     repo.set_setting("initialized", "1")
     repo.set_setting("inited_at", str(__import__("datetime").datetime.now()))
 
-    console.print(f"[success]CodeCraft initialized![/success]")
+    console.print("[success]CodeCraft initialized![/success]")
     console.print(f"  Database: [path]{db_path}[/path]")
     console.print(f"  Concepts: {len(ConceptTaxonomy.all())}")
-    console.print(f"\n[info]Next steps:[/info]")
-    console.print(f"  1. [bold]codecraft scan dir .[/bold] — scan your Python files")
-    console.print(f"  2. [bold]codecraft practice path beginner[/bold] — start learning")
-    console.print(f"  3. [bold]codecraft suggest next[/bold] — get personalized suggestions")
+    console.print("\n[info]Next steps:[/info]")
+    console.print("  1. [bold]codecraft scan dir .[/bold] — scan your Python files")
+    console.print("  2. [bold]codecraft practice path beginner[/bold] — start learning")
+    console.print("  3. [bold]codecraft suggest next[/bold] — get personalized suggestions")
 
 
 @init_app.command("reset")

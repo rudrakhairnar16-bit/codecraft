@@ -104,7 +104,7 @@ def run_migrations(conn: duckdb.DuckDBPyConnection) -> None:
     conn.execute(SCHEMA_SQL)
 
     row = conn.execute("SELECT MAX(version) FROM schema_version").fetchone()
-    current_version = row[0] if row[0] else 0
+    current_version = row[0] if row and row[0] else 0
 
     if current_version < 1:
         conn.execute("INSERT INTO schema_version (version) VALUES (1)")

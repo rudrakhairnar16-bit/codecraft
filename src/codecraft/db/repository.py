@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import duckdb
 
@@ -118,14 +119,14 @@ class Repository:
             "SELECT MAX(last_seen) FROM file_concepts WHERE concept_name = ?",
             [concept_name],
         ).fetchone()
-        return row[0] if row[0] else None
+        return row[0] if row is not None and row[0] is not None else None
 
     def get_exposure_count(self, concept_name: str) -> int:
         row = self.conn.execute(
             "SELECT SUM(occurrences) FROM file_concepts WHERE concept_name = ?",
             [concept_name],
         ).fetchone()
-        return row[0] if row[0] else 0
+        return row[0] if row is not None and row[0] is not None else 0
 
     def insert_debt_item(self, item: DebtItem) -> None:
         self.conn.execute(
@@ -165,7 +166,7 @@ class Repository:
         ).fetchall()
         return [self._row_to_debt_item(r) for r in rows]
 
-    def _row_to_debt_item(self, row) -> DebtItem:
+    def _row_to_debt_item(self, row: tuple[Any, ...]) -> DebtItem:
         return DebtItem(
             id=row[0],
             file_path=Path(row[1]),
@@ -199,7 +200,7 @@ class Repository:
 
     def get_challenge_history(
         self, concept_name: str | None = None, limit: int = 50
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         if concept_name:
             rows = self.conn.execute(
                 """
@@ -234,7 +235,7 @@ class Repository:
             for r in rows
         ]
 
-    def get_practice_stats(self) -> dict:
+    def get_practice_stats(self) -> dict[str, Any]:
         rows = self.conn.execute(
             """
             SELECT
@@ -246,6 +247,7 @@ class Repository:
             FROM challenge_history
             """,
         ).fetchone()
+        assert rows is not None
         return {
             "total_sessions": rows[0] or 0,
             "correct_sessions": rows[1] or 0,
@@ -254,7 +256,7 @@ class Repository:
             "unique_domains": rows[4] or 0,
         }
 
-    def get_streak_data(self) -> dict:
+    def get_streak_data(self) -> dict[str, Any]:
         rows = self.conn.execute(
             """
             SELECT DISTINCT DATE(created) as day
@@ -264,7 +266,7 @@ class Repository:
         ).fetchall()
         days = [r[0] for r in rows]
         streak = 0
-        from datetime import timedelta, date
+        from datetime import date, timedelta
         today = date.today()
         for i, d in enumerate(days):
             expected = today - timedelta(days=i)
@@ -344,7 +346,7 @@ class Repository:
             [key, value],
         )
 
-    def get_concept_timeline(self, concept_name: str) -> list[dict]:
+    def get_concept_timeline(self, concept_name: str) -> list[dict[str, Any]]:
         rows = self.conn.execute(
             """
             SELECT f.path, fc.occurrences, fc.first_seen, fc.last_seen

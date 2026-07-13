@@ -31,7 +31,7 @@ DEBT_TO_CONCEPT = {
 debt_app = typer.Typer(name="debt", no_args_is_help=True)
 
 
-@debt_app.command("report")
+@debt_app.command("report", epilog="Example: codecraft debt report")
 def debt_report() -> None:
     repo = get_repo()
     engine = DebtTrackerEngine(repo)
@@ -55,7 +55,7 @@ def debt_report() -> None:
         console.print("[success]No unresolved debt! Great job.[/success]")
 
 
-@debt_app.command("list")
+@debt_app.command("list", epilog="Example: codecraft debt list --type bare_except")
 def debt_list(
     pattern: str | None = typer.Option(None, "--type", "-t", help="Filter by pattern type"),
 ) -> None:
@@ -79,6 +79,7 @@ def debt_list(
     table.add_column("Suggestion")
 
     for i, item in enumerate(items, 1):
+        assert item.file_path is not None
         table.add_row(
             str(i),
             item.pattern_type.replace("_", " ").title(),
@@ -89,7 +90,7 @@ def debt_list(
     console.print(table)
 
 
-@debt_app.command("challenge")
+@debt_app.command("challenge", epilog="Example: codecraft debt challenge 1 --domain gaming")
 def debt_challenge(
     item_id: int | None = typer.Argument(None, help="Debt item index from list"),
     domain: str = typer.Option("gaming", "--domain", "-d", help="Domain context for practice"),
@@ -108,7 +109,11 @@ def debt_challenge(
     else:
         item = report.unresolved[item_id - 1]
 
-    challenge = engine.generate_challenge(item)
+    try:
+        challenge = engine.generate_challenge(item)
+    except Exception as e:
+        console.print(f"[error]Failed to generate challenge: {e}[/error]")
+        raise typer.Exit(1)
 
     console.print(Panel(f"[title]Challenge: {challenge.title}[/title]"))
     console.print(f"[info]Description:[/info] {challenge.description}")

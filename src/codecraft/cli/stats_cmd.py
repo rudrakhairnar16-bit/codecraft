@@ -10,7 +10,7 @@ from codecraft.utils.colors import console
 stats_app = typer.Typer(name="stats", no_args_is_help=True)
 
 
-@stats_app.command("sessions")
+@stats_app.command("sessions", epilog="Example: codecraft stats sessions --limit 10")
 def stats_sessions(
     limit: int = typer.Option(20, "--limit", "-l", help="Number of sessions"),
 ) -> None:
@@ -47,7 +47,9 @@ def stats_sessions(
             mins, secs = divmod(h["time_taken"], 60)
             time_str = f"{mins}m {secs}s" if mins else f"{secs}s"
             recent.add_row(
-                h["created"].strftime("%Y-%m-%d %H:%M") if hasattr(h["created"], "strftime") else str(h["created"])[:16],
+                h["created"].strftime("%Y-%m-%d %H:%M")
+                if hasattr(h["created"], "strftime")
+                else str(h["created"])[:16],
                 h["concept_name"],
                 result,
                 time_str,

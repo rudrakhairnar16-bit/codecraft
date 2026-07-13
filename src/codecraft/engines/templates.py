@@ -288,10 +288,6 @@ EXERCISE_TEMPLATES: dict[str, str] = {
         "When {noun} processing fails, preserve the full error context. "
         "Use raise ... from ... to chain exceptions without losing information."
     ),
-    "custom_exception": (
-        "Define domain-specific exception classes for your {noun} processor. "
-        "This makes error handling more expressive and targeted."
-    ),
     "class_basic": (
         "Model a {noun} entity as a class with methods "
         "that {verb} the data and properties that expose computed values."
@@ -449,7 +445,7 @@ def _generate_code_stub(domain_data: DomainData, concept_name: str) -> str:
         "file_io": f'def load_{noun}(path: str) -> list:\n    """Load and parse {noun} records from a file."""\n    # TODO: open the file and parse {noun} data\n    pass\n\n\nif __name__ == "__main__":\n    records = load_{noun}("{filename}")\n    print(f"Loaded {{len(records)}} records")',
         "list_comprehension": f"def filter_{noun}(items: list) -> list:\n    # TODO: use a list comprehension to filter {noun} items\n    return []\n\n\n# Example: [item for item in items if condition]",
         "dict_comprehension": f"def map_{noun}(items: list) -> dict:\n    # TODO: build a dict mapping each {noun} to its key\n    return {{}}\n\n\n# Example: {{item.key: item for item in items}}",
-        "context_manager": f"def process_{filename}(path: str) -> list:\n    \"\"\"Safely read and parse {filename} using a context manager.\"\"\"\n    # TODO: use 'with' to open the resource\n    return []",
+        "context_manager": f"def process_{noun}(path: str) -> list:\n    \"\"\"Safely read and parse {filename} using a context manager.\"\"\"\n    # TODO: use 'with' to open the resource\n    return []",
         "enumerate": f"def index_{noun}(items: list) -> list:\n    # TODO: use enumerate() to pair each {noun} with its index\n    return []",
         "defaultdict": f"from collections import defaultdict\n\n\ndef group_{noun}(items: list) -> dict:\n    # TODO: use defaultdict to group {noun} items by category\n    return {{}}",
         "counter": f"from collections import Counter\n\n\ndef count_{noun}(items: list) -> Counter:\n    # TODO: use Counter to tally {noun} occurrences\n    return Counter()",
@@ -460,6 +456,8 @@ def _generate_code_stub(domain_data: DomainData, concept_name: str) -> str:
         "input_function": f"def get_{noun}_from_user() -> str:\n    # TODO: use input() to ask the user for {noun} info\n    pass\n\n\nresult = get_{noun}_from_user()\nprint(f'Got: {{result}}')",
         "if_else": f"def classify_{noun}(value) -> str:\n    # TODO: use if/elif/else to categorize the {noun} value\n    return ''\n\n\nprint(classify_{noun}(42))",
         "for_loop": f"def process_all_{noun}(items: list) -> list:\n    # TODO: use a for loop to process each {noun} item\n    return []\n\n\ndata = ['a', 'b', 'c']\nresult = process_all_{noun}(data)",
+        "function_def": f"def process_{noun}(data: list) -> list:\n    # TODO: break down {noun} processing into a well-named function\n    return data\n\n\nitems = ['a', 'b', 'c']\nresult = process_{noun}(items)\nprint(result)",
+        "class_basic": f"class {noun.title()}:\n    \"\"\"Model a {noun} entity with methods.\"\"\"\n    def __init__(self, name: str, value: float):\n        self.name = name\n        self.value = value\n\n    def display(self) -> str:\n        # TODO: return a formatted description of this {noun}\n        return f'{{self.name}}: {{self.value}}'",
         "while_loop": f"def find_{noun}(target) -> int:\n    # TODO: use a while loop to search for the matching item\n    return -1\n\n\nprint(find_{noun}(100))",
         "variable_assignment": f"def track_{noun}() -> dict:\n    # TODO: use variables to store and update {noun} data\n    return {{}}\n\n\nresult = track_{noun}()\nprint(result)",
         "return_value": f"def compute_{noun}_total(values: list) -> float:\n    # TODO: compute and return the total of {noun} values\n    pass\n\n\ntotal = compute_{noun}_total([10, 20, 30])\nprint(total)",

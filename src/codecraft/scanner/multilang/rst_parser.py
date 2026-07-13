@@ -43,6 +43,7 @@ class _RustParser(TreeSitterParser):
     ]
 
 
-from tree_sitter_rust import language as _rs_lang_fn
-_RustParser.LANGUAGE_FN = _rs_lang_fn
+from tree_sitter_rust import language as _rs_lang_fn  # noqa: E402
+
+_RustParser.LANGUAGE_FN = _rs_lang_fn  # type: ignore[assignment]
 RustParser = _RustParser

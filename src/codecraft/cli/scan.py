@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json as _json
+import time
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich.table import Table
@@ -12,14 +14,14 @@ from codecraft.db.repository import Repository
 from codecraft.engines.debt_tracker import DebtTrackerEngine
 from codecraft.models.file import FileRecord
 from codecraft.scanner.ast_parser import file_hash, file_stats
-from codecraft.scanner.unified import UnifiedScanner
 from codecraft.scanner.multilang import Language, LanguageDetector
+from codecraft.scanner.unified import UnifiedScanner
 from codecraft.utils.colors import console
 
 scan_app = typer.Typer(name="scan", no_args_is_help=True)
 
 
-@scan_app.command("dir")
+@scan_app.command("dir", epilog="Example: codecraft scan dir . --dry-run")
 def scan_directory(
     path: Path = typer.Argument(".", help="Directory to scan"),
     recursive: bool = typer.Option(True, "-r", "--recursive", help="Scan recursively"),
@@ -28,7 +30,7 @@ def scan_directory(
     json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
 ) -> None:
     supported_exts = set(LanguageDetector.supported_extensions())
-    patterns = ["**/*"] if recursive else ["*"]
+    _patterns = ["**/*"] if recursive else ["*"]
     scanner = UnifiedScanner()
     repo = get_repo()
 
@@ -45,13 +47,18 @@ def scan_directory(
 
     if not json_output:
         lang_count = len([f for f in files if f.suffix == ".py"])
-        console.print(f"[title]Scanning {len(files)} files ({lang_count} Python, {len(files) - lang_count} other)...[/title]")
+        other_count = len(files) - lang_count
+        console.print(f"[title]Scanning {len(files)} files ({lang_count} Python, {other_count} other)...[/title]")
 
     scanned = 0
     for file in files:
         if any(part.startswith(".") for part in file.parts):
             continue
-        report = scanner.scan_file(file)
+        try:
+            report = scanner.scan_file(file)
+        except Exception as e:
+            console.print(f"[error]Failed to scan {file}: {e}[/error]")
+            continue
         if report and not report.errors:
             fhash = file_hash(file)
             size, lines = file_stats(file)
@@ -89,9 +96,12 @@ def scan_directory(
                 except SyntaxError:
                     pass
             else:
-                concepts = scanner.multi_scanner.parse_file(str(file))
-                if concepts:
-                    repo.upsert_file_concepts(file, concepts)
+                try:
+                    concepts = scanner.multi_scanner.parse_file(str(file))
+                    if concepts:
+                        repo.upsert_file_concepts(file, concepts)
+                except Exception as e:
+                    console.print(f"[error]Failed to parse {file}: {e}[/error]")
 
             scanned += 1
 
@@ -132,7 +142,7 @@ def _watch_directory(path: Path, scanner: UnifiedScanner, repo: Repository) -> N
         raise typer.Exit(1)
 
     class CodecraftHandler(FileSystemEventHandler):
-        def on_modified(self, event):
+        def on_modified(self, event: Any) -> None:
             if event.src_path.endswith(".py"):
                 file = Path(event.src_path)
                 report = scanner.scan_file(file)
@@ -152,10 +162,11 @@ def _watch_directory(path: Path, scanner: UnifiedScanner, repo: Repository) -> N
     observer.join()
 
 
-@scan_app.command("file")
+@scan_app.command("file", epilog="Example: codecraft scan file main.py")
 def scan_single(
     file: Path = typer.Argument(..., help="Python file to scan", exists=True),
 ) -> None:
+
     scanner = UnifiedScanner()
     report = scanner.scan_file(file)
     if report is None:
@@ -163,37 +174,50 @@ def scan_single(
         raise typer.Exit(1)
 
     repo = get_repo()
-    fhash = file_hash(file)
-    size, lines = file_stats(file)
-    record = FileRecord(path=file, hash=fhash, size=size, lines=lines)
-    record.complexity = report.complexity
-    record.import_count = len(report.imports)
-    repo.upsert_file(record)
 
-    import ast
-    source = file.read_text(encoding="utf-8", errors="replace")
-    tree_ast = ast.parse(source)
-    concepts = scanner.concept_extractor.extract(tree_ast)
-    if isinstance(concepts, dict):
-        repo.upsert_file_concepts(file, concepts)
+    try:
+        fhash = file_hash(file)
+        size, lines = file_stats(file)
+        record = FileRecord(path=file, hash=fhash, size=size, lines=lines)
+        record.complexity = report.complexity
+        record.import_count = len(report.imports)
+        repo.upsert_file(record)
 
-    debt_detector = DebtDetector(source, file)
-    debt_items = debt_detector.detect(tree_ast)
-    debt_tracker = DebtTrackerEngine(repo)
-    debt_tracker.scan_and_track(debt_items)
+        import ast
 
-    tree = Tree(f"[title]{file.name}[/title]")
-    concepts_node = tree.add("[concept]Concepts[/concept]")
+        from codecraft.engines.debt_tracker import DebtTrackerEngine
+        from codecraft.scanner.debt_detector import DebtDetector
+        source = file.read_text(encoding="utf-8", errors="replace")
+        tree = ast.parse(source)
+        concepts = scanner.concept_extractor.extract(tree)
+        if isinstance(concepts, dict):
+            repo.upsert_file_concepts(file, concepts)
+
+        debt_detector = DebtDetector(source, file)
+        debt_items = debt_detector.detect(tree)
+        debt_tracker = DebtTrackerEngine(repo)
+        debt_tracker.scan_and_track(debt_items)
+    except SyntaxError:
+        console.print(f"[error]Syntax error in {file}[/error]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[error]Failed to process {file}: {e}[/error]")
+        raise typer.Exit(1)
+
+    output = Tree(f"[title]{file.name}[/title]")
+    concepts_node = output.add("[concept]Concepts[/concept]")
     for c in report.concepts:
         concepts_node.add(c)
 
-    debt_node = tree.add("[debt]Debt Patterns[/debt]")
+    debt_node = output.add("[debt]Debt Patterns[/debt]")
     for d in report.debt_items:
         debt_node.add(f"[debt]{d}[/debt]")
 
-    info = tree.add("Info")
+    info = output.add("Info")
     info.add(f"Complexity: {report.complexity}")
     info.add(f"Lines: {report.lines}")
     info.add(f"Imports: {len(report.imports)}")
 
-    console.print(tree)
+    console.print(output)
+
+

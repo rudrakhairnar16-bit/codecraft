@@ -25,7 +25,7 @@ class DebtItem:
 class DebtReport:
     total_items: int = 0
     resolved_items: int = 0
-    by_type: dict = field(default_factory=dict)
+    by_type: dict[str, int] = field(default_factory=dict)
     items: list[DebtItem] = field(default_factory=list)
     score: float = 0.0
 

@@ -67,8 +67,8 @@ def precommit_install(
         console.print(f"[success]Created {hook_path}[/success]")
 
     console.print("\n[info]Next:[/info]")
-    console.print(f"  1. Install pre-commit: [bold]pip install pre-commit && pre-commit install[/bold]")
-    console.print(f"  2. Or use hook directly: [bold]python .hooks/codecraft-scan.py[/bold]")
+    console.print("  1. Install pre-commit: [bold]pip install pre-commit && pre-commit install[/bold]")
+    console.print("  2. Or use hook directly: [bold]python .hooks/codecraft-scan.py[/bold]")
 
 
 @precommit_app.command("show")

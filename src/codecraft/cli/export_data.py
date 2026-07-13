@@ -3,20 +3,19 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import typer
-from rich.table import Table
 
 from codecraft.cli.deps import get_repo
 from codecraft.engines.debt_tracker import DebtTrackerEngine
 from codecraft.engines.scheduler import ForgettingScheduler
-from codecraft.models.concept import ConceptTaxonomy
 from codecraft.utils.colors import console
 
 export_app = typer.Typer(name="export", no_args_is_help=True)
 
 
-@export_app.command("json")
+@export_app.command("json", epilog="Example: codecraft export json -o data.json")
 def export_json(
     output: str = typer.Option("codecraft_export.json", "--output", "-o", help="Output file path"),
 ) -> None:
@@ -27,7 +26,7 @@ def export_json(
     console.print(f"[success]Exported to {out.resolve()}[/success]")
 
 
-@export_app.command("csv")
+@export_app.command("csv", epilog="Example: codecraft export csv -o data.csv")
 def export_csv(
     output: str = typer.Option("codecraft_export.csv", "--output", "-o", help="Output file path"),
 ) -> None:
@@ -40,7 +39,9 @@ def export_csv(
         writer.writeheader()
         for h in history:
             writer.writerow({
-                "date": h["created"].strftime("%Y-%m-%d %H:%M") if hasattr(h["created"], "strftime") else str(h["created"]),
+                "date": h["created"].strftime("%Y-%m-%d %H:%M")
+                if hasattr(h["created"], "strftime")
+                else str(h["created"]),
                 "concept": h["concept_name"],
                 "type": h["challenge_type"],
                 "correct": "yes" if h["correct"] else "no",
@@ -50,22 +51,22 @@ def export_csv(
     console.print(f"[success]Exported to {out.resolve()}[/success]")
 
 
-@export_app.command("summary")
+@export_app.command("summary", epilog="Example: codecraft export summary")
 def export_summary() -> None:
     repo = get_repo()
     data = _build_export_data(repo)
-    console.print(f"[title]Export Summary[/title]")
+    console.print("[title]Export Summary[/title]")
     console.print(f"  Files scanned: {len(data['files'])}")
     console.print(f"  Concepts detected: {len(data['concepts'])}")
     console.print(f"  Practice sessions: {data['stats']['total_sessions']}")
     console.print(f"  Debt items: {data['debt']['total']}")
     console.print(f"  Cards tracked: {len(data['cards'])}")
-    console.print(f"\n  [info]Export commands:[/info]")
-    console.print(f"    codecraft export json -o export.json")
-    console.print(f"    codecraft export csv -o export.csv")
+    console.print("\n  [info]Export commands:[/info]")
+    console.print("    codecraft export json -o export.json")
+    console.print("    codecraft export csv -o export.csv")
 
 
-def _build_export_data(repo) -> dict:
+def _build_export_data(repo: Any) -> dict[str, Any]:
     files = repo.get_all_files()
     concepts = repo.get_all_concept_names()
     debt = DebtTrackerEngine(repo).get_report()
@@ -90,7 +91,12 @@ def _build_export_data(repo) -> dict:
             ],
         },
         "cards": [
-            {"concept": c.concept_name, "strength": c.strength, "interval_days": c.interval_days, "next_review": c.next_review}
+            {
+                "concept": c.concept_name,
+                "strength": c.strength,
+                "interval_days": c.interval_days,
+                "next_review": c.next_review,
+            }
             for c in cards
         ],
         "history": [

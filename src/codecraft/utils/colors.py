@@ -30,9 +30,7 @@ codecraft_theme = Theme(
     }
 )
 
-console_args = {"theme": codecraft_theme}
 if _NO_COLOR:
-    console_args["no_color"] = True
-    console_args["force_terminal"] = False
-
-console = Console(**console_args)
+    console = Console(theme=codecraft_theme, no_color=True, force_terminal=False)
+else:
+    console = Console(theme=codecraft_theme)

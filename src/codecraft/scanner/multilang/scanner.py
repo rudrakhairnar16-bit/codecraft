@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 from codecraft.models.file import FileConcept
 from codecraft.scanner.multilang.detector import Language, LanguageDetector
 from codecraft.scanner.multilang.parser import BaseParser
@@ -19,14 +17,14 @@ class MultiLanguageScanner:
         except Exception:
             pass
         import importlib
-        _MODULES = [
+        _modules = [
             ("javascript", "codecraft.scanner.multilang.ts_parser", "JavaScriptParser"),
             ("typescript", "codecraft.scanner.multilang.ts_parser", "TypeScriptParser"),
             ("go", "codecraft.scanner.multilang.go_parser", "GoParser"),
             ("rust", "codecraft.scanner.multilang.rst_parser", "RustParser"),
             ("java", "codecraft.scanner.multilang.java_parser", "JavaParser"),
         ]
-        for lang_name, mod_path, cls_name in _MODULES:
+        for lang_name, mod_path, cls_name in _modules:
             try:
                 mod = importlib.import_module(mod_path)
                 cls = getattr(mod, cls_name)
@@ -41,7 +39,7 @@ class MultiLanguageScanner:
         if parser is None:
             return {}
         try:
-            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            with open(file_path, encoding="utf-8", errors="replace") as f:
                 source = f.read()
         except Exception:
             return {}
@@ -63,3 +61,4 @@ class MultiLanguageScanner:
         for lang in self._parsers:
             exts.extend(LanguageDetector.supported_extensions())
         return sorted(set(exts))
+

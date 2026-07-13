@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from datetime import datetime, timedelta
+from typing import Any
 
 from codecraft.db.repository import Repository
 from codecraft.models.review import ReviewQueue, SpacedRepetitionCard
@@ -80,7 +81,46 @@ class ForgettingScheduler:
         self.repo.upsert_card(card)
         return card
 
-    def get_decay_report(self) -> list[dict]:
+    def schedule(self, concept_name: str) -> SpacedRepetitionCard:
+        existing = self.repo.get_card(concept_name)
+        if existing:
+            return existing
+        card = SpacedRepetitionCard(concept_name=concept_name)
+        self.repo.upsert_card(card)
+        return card
+
+    def review(
+        self, concept_name: str, correct: bool, time_taken: int = 0
+    ) -> SpacedRepetitionCard:
+        return self.after_review(concept_name, correct, time_taken)
+
+    def get_due_cards(self, threshold: float = 0.6) -> list[SpacedRepetitionCard]:
+        return self.get_review_queue(threshold).due_cards()
+
+    def get_all_cards(self) -> list[SpacedRepetitionCard]:
+        return self.repo.get_all_cards()
+
+    def get_scheduled_concepts(self) -> list[str]:
+        return [c.concept_name for c in self.repo.get_all_cards()]
+
+    def apply_decay(self, factor: float = 0.5) -> None:
+        for card in self.repo.get_all_cards():
+            card.strength *= factor
+            self.repo.upsert_card(card)
+
+    def compute_status(self, concept_name: str) -> str | None:
+        if concept_name not in self.repo.get_all_concept_names():
+            return None
+        card = self.repo.get_card(concept_name)
+        strength = card.strength if card is not None else self._compute_strength(concept_name)
+        if strength >= 0.8:
+            return "fresh"
+        elif strength >= 0.6:
+            return "stable"
+        else:
+            return "decaying"
+
+    def get_decay_report(self) -> list[dict[str, Any]]:
         concepts = self.repo.get_all_concept_names()
         now = datetime.now()
         report = []

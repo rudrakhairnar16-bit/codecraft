@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from typing import Any
+
 import typer
 from rich.panel import Panel
 from rich.table import Table
 
-from codecraft.cli.deps import get_repo
 from codecraft.cli.debt import DEBT_TO_CONCEPT
+from codecraft.cli.deps import get_repo
 from codecraft.engines.debt_tracker import DebtTrackerEngine
 from codecraft.engines.remix import RemixEngine
 from codecraft.engines.scheduler import ForgettingScheduler
@@ -20,36 +22,49 @@ def suggest_callback() -> None:
     pass
 
 
-@suggest_app.command("next")
+@suggest_app.command("next", epilog="Example: codecraft suggest next --count 3")
 def suggest_next(
     count: int = typer.Option(5, "--count", "-c", help="Number of suggestions"),
 ) -> None:
     repo = get_repo()
     known = set(repo.get_all_concept_names())
+    if not known:
+        console.print("[warning]No concepts found yet. Scan some code first with 'codecraft scan dir'.[/warning]")
+        raise typer.Exit()
     suggestions = _compute_suggestions(repo, known, count)
+    if not suggestions:
+        console.print("[success]No suggestions — you're on track![/success]")
+        return
     _display_suggestions(suggestions)
 
 
-@suggest_app.command("all")
+@suggest_app.command("all", epilog="Example: codecraft suggest all")
 def suggest_all() -> None:
     repo = get_repo()
     known = set(repo.get_all_concept_names())
+    if not known:
+        console.print("[warning]No concepts found yet. Scan some code first with 'codecraft scan dir'.[/warning]")
+        raise typer.Exit()
     suggestions = _compute_suggestions(repo, known, 50)
+    if not suggestions:
+        console.print("[success]No suggestions — you're on track![/success]")
+        return
     _display_suggestions(suggestions)
 
 
-def _compute_suggestions(repo, known: set, count: int) -> list[dict]:
+def _compute_suggestions(repo: Any, known: set[str], count: int) -> list[dict[str, Any]]:
     all_c = ConceptTaxonomy.all()
-    results = []
+    results: list[dict[str, Any]] = []
 
     debt = DebtTrackerEngine(repo).get_report()
     scheduler = ForgettingScheduler(repo)
     decay = scheduler.get_decay_report()
-    decay_map = {r["concept"]: r for r in decay}
+    _decay_map = {r["concept"]: r for r in decay}
 
     for unresolved in debt.unresolved:
         concept = DEBT_TO_CONCEPT.get(unresolved.pattern_type, unresolved.pattern_type)
         if concept not in known:
+            assert unresolved.file_path is not None
             results.append({
                 "concept": concept,
                 "reason": f"Debt pattern '{unresolved.pattern_type}' found in {unresolved.file_path.name}",
@@ -91,7 +106,7 @@ def _compute_suggestions(repo, known: set, count: int) -> list[dict]:
     return deduped[:count]
 
 
-def _display_suggestions(suggestions: list[dict]) -> None:
+def _display_suggestions(suggestions: list[dict[str, Any]]) -> None:
     if not suggestions:
         console.print("[success]No suggestions — you're on track![/success]")
         return
@@ -110,3 +125,4 @@ def _display_suggestions(suggestions: list[dict]) -> None:
         action = f"codecraft practice start {s['concept']}"
         table.add_row(str(i), s["concept"], priority_str, s["reason"][:60], action)
     console.print(table)
+

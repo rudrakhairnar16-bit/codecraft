@@ -1,14 +1,11 @@
 from __future__ import annotations
 
 import typer
-from rich.panel import Panel
-from rich.prompt import Confirm
 
 from codecraft.cli.deps import get_repo
 from codecraft.engines.debt_tracker import DebtTrackerEngine
 from codecraft.engines.remix import RemixEngine
 from codecraft.engines.scheduler import ForgettingScheduler
-from codecraft.utils.colors import console
 
 wizard_app = typer.Typer(name="start", help="Interactive setup wizard")
 
@@ -37,7 +34,7 @@ def start_wizard(ctx: typer.Context) -> None:
         scheduler = ForgettingScheduler(repo)
         decay = scheduler.get_decay_report()
         decaying = sum(1 for r in decay if r["status"] == "decaying")
-        print(f"  Gaps: {len(gaps)}  |  Decaying: {decaying}  |  Debt: {debt.score:.0%}")
+        print(f"  Gaps: {len(gaps)}  |  Decaying: {decaying}  |  Debt: {debt.get_report().score:.0%}")
 
     print("\nStep 2/4: Learning suggestions")
     print("  Run:  codecraft suggest next")

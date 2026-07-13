@@ -1,11 +1,15 @@
+import os
 from collections.abc import Generator
 from pathlib import Path
 
+import duckdb
 import pytest
 
 from codecraft.db.connection import Database
 from codecraft.db.migrations import run_migrations
 from codecraft.db.repository import Repository
+
+os.environ.setdefault("NO_COLOR", "1")
 
 
 @pytest.fixture
@@ -16,6 +20,13 @@ def db() -> Generator[Database, None, None]:
     run_migrations(conn)
     yield db
     Database.reset()
+
+
+@pytest.fixture
+def in_memory_db() -> Generator[duckdb.DuckDBPyConnection, None, None]:
+    conn = duckdb.connect(":memory:")
+    yield conn
+    conn.close()
 
 
 @pytest.fixture

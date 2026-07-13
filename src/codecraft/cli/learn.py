@@ -14,7 +14,7 @@ from codecraft.utils.colors import console
 learn_app = typer.Typer(name="learn", no_args_is_help=True)
 
 
-@learn_app.command("concept")
+@learn_app.command("concept", epilog="Example: codecraft learn concept list_comprehension --domain finance")
 def learn_concept(
     concept: str = typer.Argument(..., help="Concept to learn"),
     domain: str | None = typer.Option(None, "--domain", "-d", help="Domain context"),
@@ -32,9 +32,9 @@ def learn_concept(
     known = set(repo.get_all_concept_names())
     card = repo.get_card(resolved)
     debt = DebtTrackerEngine(repo)
-    debt_report = debt.get_report()
-    scheduler = ForgettingScheduler(repo)
-    remix = RemixEngine(repo)
+    debt.get_report()
+    ForgettingScheduler(repo)
+    RemixEngine(repo)
 
     console.print(Panel(f"[title]Learning: {resolved}[/title]"))
     console.print(f"[info]Tier:[/info] {c.tier.value} ({['Seed', 'Root', 'Branch', 'Canopy'][c.tier.value-1]})")
@@ -61,11 +61,11 @@ def learn_concept(
     table.add_column("Action", style="concept")
     table.add_column("Command")
 
-    table.add_row("1", "Understand the concept", f"[dim]Read the description above[/dim]")
+    table.add_row("1", "Understand the concept", "[dim]Read the description above[/dim]")
     table.add_row("2", "Practice with exercise", f"codecraft practice start {resolved} --domain {domain or 'gaming'}")
     table.add_row("3", "Generate transfer exercise", f"codecraft remix generate {resolved}")
     table.add_row("4", "Review with spaced repetition", f"codecraft schedule review {resolved} --correct")
-    table.add_row("5", "Check decay over time", f"codecraft schedule decay")
+    table.add_row("5", "Check decay over time", "codecraft schedule decay")
     console.print(table)
 
 
@@ -74,3 +74,4 @@ def _resolve_concept_name(name: str) -> str:
         if name.lower() in cname.lower():
             return cname
     return name
+

@@ -63,6 +63,7 @@ class DebtTrackerEngine:
         )
 
     def generate_challenge(self, debt_item: DebtItem) -> Challenge:
+        assert debt_item.file_path is not None
         challenge_id = f"debt_{debt_item.pattern_type}_{debt_item.file_path.stem}"
 
         alt_lines = debt_item.alternative_code.split("\n")

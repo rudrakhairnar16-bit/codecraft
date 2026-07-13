@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -10,37 +11,42 @@ from codecraft.utils.colors import console
 
 profile_app = typer.Typer(name="profile", no_args_is_help=True)
 
-_CODE_DIR = Path(os.path.expanduser("~/.codecraft"))
-_PROFILES_FILE = _CODE_DIR / "profiles.json"
+def _code_dir() -> Path:
+    return Path(os.path.expanduser("~/.codecraft"))
 
 
-def _ensure_config():
-    _CODE_DIR.mkdir(parents=True, exist_ok=True)
-    if not _PROFILES_FILE.exists():
-        _PROFILES_FILE.write_text(json.dumps({"current": "default", "profiles": {"default": {}}}))
+def _profiles_file() -> Path:
+    return _code_dir() / "profiles.json"
 
 
-def _get_profiles() -> dict:
+def _ensure_config() -> None:
+    _code_dir().mkdir(parents=True, exist_ok=True)
+    pf = _profiles_file()
+    if not pf.exists():
+        pf.write_text(json.dumps({"current": "default", "profiles": {"default": {}}}))
+
+
+def _get_profiles() -> dict[str, Any]:
     _ensure_config()
-    return json.loads(_PROFILES_FILE.read_text())
+    return json.loads(_profiles_file().read_text())  # type: ignore[no-any-return]
 
 
-def _save_profiles(data: dict) -> None:
-    _PROFILES_FILE.write_text(json.dumps(data, indent=2))
+def _save_profiles(data: dict[str, Any]) -> None:
+    _profiles_file().write_text(json.dumps(data, indent=2))
 
 
 def get_current_profile() -> str:
     data = _get_profiles()
-    return data.get("current", "default")
+    return str(data.get("current", "default"))
 
 
 def get_profile_dir() -> Path:
     profile = get_current_profile()
-    return _CODE_DIR / "profiles" / profile
+    return _code_dir() / "profiles" / profile
 
 
-@profile_app.command("list")
-def profile_list():
+@profile_app.command("list", epilog="Example: codecraft profile list")
+def profile_list() -> None:
     """List all profiles."""
     data = _get_profiles()
     current = data.get("current", "default")
@@ -54,11 +60,11 @@ def profile_list():
     console.print(f"\n[dim]Active profile: {current}[/dim]")
 
 
-@profile_app.command("create")
+@profile_app.command("create", epilog="Example: codecraft profile create work --no-switch")
 def profile_create(
     name: str = typer.Argument(..., help="Profile name"),
     switch: bool = typer.Option(True, "--switch/--no-switch", help="Switch to new profile after creation"),
-):
+) -> None:
     """Create a new learning profile with its own database."""
     data = _get_profiles()
     profiles = data.setdefault("profiles", {})
@@ -70,7 +76,7 @@ def profile_create(
         data["current"] = name
     _save_profiles(data)
 
-    profile_dir = _CODE_DIR / "profiles" / name
+    profile_dir = _code_dir() / "profiles" / name
     profile_dir.mkdir(parents=True, exist_ok=True)
 
     msg = f"[success]Profile '{name}' created[/success]"
@@ -79,10 +85,10 @@ def profile_create(
     console.print(msg)
 
 
-@profile_app.command("switch")
+@profile_app.command("switch", epilog="Example: codecraft profile switch work")
 def profile_switch(
     name: str = typer.Argument(..., help="Profile name to switch to"),
-):
+) -> None:
     """Switch to a different learning profile."""
     data = _get_profiles()
     if name not in data.get("profiles", {}):
@@ -94,11 +100,11 @@ def profile_switch(
     console.print(f"[success]Switched to profile '{name}'[/success]")
 
 
-@profile_app.command("delete")
+@profile_app.command("delete", epilog="Example: codecraft profile delete work --force")
 def profile_delete(
     name: str = typer.Argument(..., help="Profile name to delete"),
     force: bool = typer.Option(False, "--force", "-f", help="Delete without confirmation"),
-):
+) -> None:
     """Delete a profile and its database."""
     data = _get_profiles()
     if name not in data.get("profiles", {}):
@@ -117,7 +123,7 @@ def profile_delete(
         data["current"] = "default"
     _save_profiles(data)
 
-    profile_dir = _CODE_DIR / "profiles" / name
+    profile_dir = _code_dir() / "profiles" / name
     db_file = profile_dir / "codecraft.duckdb"
     if db_file.exists():
         db_file.unlink()

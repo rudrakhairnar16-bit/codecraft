@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from typing import Any
 
 from codecraft.db.repository import Repository
 from codecraft.domains.registry import DomainRegistry
@@ -89,7 +90,7 @@ class RemixEngine:
             difficulty=1,
         )
 
-    def get_domain_stats(self) -> list[dict]:
+    def get_domain_stats(self) -> list[dict[str, Any]]:
         stats = []
         known = self.find_known_concepts()
         for domain in DomainRegistry.all():

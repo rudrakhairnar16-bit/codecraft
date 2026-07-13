@@ -51,6 +51,7 @@ class _JavaParser(TreeSitterParser):
     ]
 
 
-from tree_sitter_java import language as _java_lang_fn
-_JavaParser.LANGUAGE_FN = _java_lang_fn
+from tree_sitter_java import language as _java_lang_fn  # noqa: E402
+
+_JavaParser.LANGUAGE_FN = _java_lang_fn  # type: ignore[assignment]
 JavaParser = _JavaParser

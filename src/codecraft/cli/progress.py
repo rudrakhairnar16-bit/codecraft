@@ -15,7 +15,7 @@ from codecraft.utils.colors import console
 progress_app = typer.Typer(name="progress", no_args_is_help=True)
 
 
-@progress_app.command("overview")
+@progress_app.command("overview", epilog="Example: codecraft progress overview")
 def progress_overview() -> None:
     repo = get_repo()
     stats = repo.get_practice_stats()
@@ -43,7 +43,8 @@ def progress_overview() -> None:
     table.add_row("Coverage", f"{len(concepts)}/{len(all_concepts)} ({len(concepts)*100//max(len(all_concepts),1)}%)")
     table.add_row("Practice sessions", str(stats["total_sessions"]))
     table.add_row("Correct sessions", str(stats["correct_sessions"]))
-    table.add_row("Accuracy", f"{stats['correct_sessions']*100//max(stats['total_sessions'],1)}%" if stats["total_sessions"] else "N/A")
+    pct = f"{stats['correct_sessions']*100//max(stats['total_sessions'],1)}%"
+    table.add_row("Accuracy", pct if stats["total_sessions"] else "N/A")
     table.add_row("Active streak", f"{streak['current_streak']} days")
     table.add_row("Total active days", str(streak["total_active_days"]))
     table.add_row("Fresh concepts", f"[strength.high]{fresh}[/strength.high]")
@@ -59,7 +60,7 @@ def progress_overview() -> None:
         console.print(f"[info]Unique domains explored:[/info] {stats['unique_domains']}")
 
 
-@progress_app.command("history")
+@progress_app.command("history", epilog="Example: codecraft progress history --limit 10")
 def progress_history(
     limit: int = typer.Option(20, "--limit", "-l", help="Number of recent sessions"),
 ) -> None:
@@ -93,16 +94,17 @@ def progress_history(
     console.print(table)
 
 
-@progress_app.command("tree")
+@progress_app.command("tree", epilog="Example: codecraft progress tree")
 def progress_tree() -> None:
     repo = get_repo()
     concepts = repo.get_all_concept_names()
-    scheduler = ForgettingScheduler(repo)
+    _ = ForgettingScheduler(repo)
     tree = Tree("[title]Concept Mastery Tree[/title]")
     tiers = {1: "Seed", 2: "Root", 3: "Branch", 4: "Canopy"}
     for tier_num in [1, 2, 3, 4]:
         tier_concepts = [c for c in ConceptTaxonomy.all() if c.tier.value == tier_num]
-        tier_node = tree.add(f"[tier{tier_num}]Tier {tier_num}: {tiers[tier_num]} ({len(tier_concepts)} concepts)[/tier{tier_num}]")
+        label = f"Tier {tier_num}: {tiers[tier_num]} ({len(tier_concepts)} concepts)"
+        tier_node = tree.add(f"[tier{tier_num}]{label}[/tier{tier_num}]")
         for c in tier_concepts:
             if c.name in concepts:
                 card = repo.get_card(c.name)
@@ -120,3 +122,4 @@ def progress_tree() -> None:
             else:
                 tier_node.add(f"[dim]{c.name} (unseen)[/dim]")
     console.print(tree)
+

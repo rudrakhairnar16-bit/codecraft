@@ -12,14 +12,18 @@ from codecraft.utils.colors import console
 schedule_app = typer.Typer(name="schedule", no_args_is_help=True)
 
 
-@schedule_app.command("queue")
+@schedule_app.command("queue", epilog="Example: codecraft schedule queue --threshold 0.5")
 def show_queue(
     threshold: float = typer.Option(0.6, "--threshold", "-t", help="Strength threshold for decay"),
 ) -> None:
     repo = get_repo()
     scheduler = ForgettingScheduler(repo)
-    queue = scheduler.get_review_queue(threshold)
-    sorted_cards = queue.sort_by_urgency()
+    try:
+        queue = scheduler.get_review_queue(threshold)
+        sorted_cards = queue.sort_by_urgency()
+    except Exception as e:
+        console.print(f"[error]Failed to get review queue: {e}[/error]")
+        raise typer.Exit(1)
 
     if not sorted_cards:
         console.print("[success]No reviews due! All concepts are fresh.[/success]")
@@ -53,12 +57,16 @@ def show_queue(
     console.print(table)
 
 
-@schedule_app.command("due")
+@schedule_app.command("due", epilog="Example: codecraft schedule due")
 def show_due() -> None:
     repo = get_repo()
     scheduler = ForgettingScheduler(repo)
-    queue = scheduler.get_review_queue()
-    due = queue.due_cards()
+    try:
+        queue = scheduler.get_review_queue()
+        due = queue.due_cards()
+    except Exception as e:
+        console.print(f"[error]Failed to get due cards: {e}[/error]")
+        raise typer.Exit(1)
 
     if not due:
         console.print("[success]Nothing due right now. Enjoy your day![/success]")
@@ -69,7 +77,7 @@ def show_due() -> None:
         console.print(f"  [concept]{card.concept_name}[/concept] — urgency: [debt]{card.urgency:.1f}d overdue[/debt]")
 
 
-@schedule_app.command("review")
+@schedule_app.command("review", epilog="Example: codecraft schedule review list_comprehension --correct")
 def review_concept(
     concept: str = typer.Argument(..., help="Concept to review"),
     correct: bool = typer.Option(True, "--correct/--incorrect", "-c/-i", help="Did you recall correctly?"),
@@ -102,7 +110,7 @@ def review_concept(
             console.print(Panel(challenge.description[:200], border_style="yellow"))
 
 
-@schedule_app.command("decay")
+@schedule_app.command("decay", epilog="Example: codecraft schedule decay --min 0.5")
 def show_decay(
     min_strength: float = typer.Option(0.0, "--min", "-m", help="Minimum strength to show"),
 ) -> None:

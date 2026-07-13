@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 import typer
 from rich.panel import Panel
@@ -19,7 +20,7 @@ app = typer.Typer(
 IS_QUIET = False
 
 
-def _lazy_import(name: str):
+def _lazy_import(name: str) -> Any:
     import importlib
     return importlib.import_module(name)
 
@@ -45,7 +46,7 @@ def main(
         _check_onboarding(repo)
 
 
-def _check_onboarding(repo) -> None:
+def _check_onboarding(repo: Any) -> None:
     inited = repo.get_setting("onboarded", "")
     if inited:
         return
@@ -60,7 +61,7 @@ def _check_onboarding(repo) -> None:
     repo.set_setting("onboarded", "1")
 
 
-@app.command("status", help="Show aggregated learning status")
+@app.command("status", help="Show aggregated learning status", epilog="Example: codecraft status --json")
 def show_status(
     json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
 ) -> None:
@@ -107,7 +108,11 @@ def show_status(
         return
 
     if _quiet():
-        print(f"files={len(files)} concepts={len(concepts)} gaps={len(gaps)} debt={debt_report.score:.0%} sessions={stats['total_sessions']} streak={streak['current_streak']}d decaying={decaying}")
+        print(
+            f"files={len(files)} concepts={len(concepts)} gaps={len(gaps)} "
+            f"debt={debt_report.score:.0%} sessions={stats['total_sessions']} "
+            f"streak={streak['current_streak']}d decaying={decaying}"
+        )
         return
 
     console.print(Panel(f"[title]CodeCraft Status - {datetime.now().strftime('%Y-%m-%d %H:%M')}[/title]"))
@@ -122,7 +127,8 @@ def show_status(
     table.add_row("Debt score", f"[score]{debt_report.score:.0%}[/score]")
     table.add_row("Unresolved debt", f"[debt]{len(debt_report.unresolved)}[/debt]")
     table.add_row("Practice sessions", str(stats["total_sessions"]))
-    table.add_row("Accuracy", f"{stats['correct_sessions'] * 100 // max(stats['total_sessions'], 1)}%" if stats["total_sessions"] else "N/A")
+    pct = f"{stats['correct_sessions'] * 100 // max(stats['total_sessions'], 1)}%"
+    table.add_row("Accuracy", pct if stats["total_sessions"] else "N/A")
     table.add_row("Streak", f"{streak['current_streak']} days")
     table.add_row("Stable concepts", f"[strength.high]{stable}[/strength.high]")
     table.add_row("Decaying concepts", f"[strength.low]{decaying}[/strength.low]")
@@ -147,24 +153,24 @@ def show_status(
 
 
 # Lazy registration to avoid circular imports
-def _register_apps():
-    import codecraft.cli.scan as sc
-    import codecraft.cli.debt as dt
-    import codecraft.cli.remix as rx
-    import codecraft.cli.schedule as sch
+def _register_apps() -> None:
     import codecraft.cli.dashboard as db
-    import codecraft.cli.practice as pr
-    import codecraft.cli.progress as pg
-    import codecraft.cli.suggest as sg
-    import codecraft.cli.learn as ln
-    import codecraft.cli.stats_cmd as st
+    import codecraft.cli.debt as dt
     import codecraft.cli.export_data as ex
     import codecraft.cli.init_cmd as ic
-    import codecraft.cli.start_wizard as wz
-    import codecraft.cli.vacuum as vc
+    import codecraft.cli.learn as ln
+    import codecraft.cli.practice as pr
     import codecraft.cli.precommit_hook as pc
-    import codecraft.cli.sync_cmd as sy
     import codecraft.cli.profile_cmd as pf
+    import codecraft.cli.progress as pg
+    import codecraft.cli.remix as rx
+    import codecraft.cli.scan as sc
+    import codecraft.cli.schedule as sch
+    import codecraft.cli.start_wizard as wz
+    import codecraft.cli.stats_cmd as st
+    import codecraft.cli.suggest as sg
+    import codecraft.cli.sync_cmd as sy
+    import codecraft.cli.vacuum as vc
 
     app.add_typer(sc.scan_app, name="scan", help="Scan Python files and extract concept fingerprints")
     app.add_typer(dt.debt_app, name="debt", help="Track and resolve learning debt")

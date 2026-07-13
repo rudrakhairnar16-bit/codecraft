@@ -13,7 +13,7 @@ from codecraft.scanner.multilang import LanguageDetector, MultiLanguageScanner
 
 
 class UnifiedScanner:
-    def __init__(self):
+    def __init__(self) -> None:
         self.concept_extractor = ConceptExtractor()
         self.debt_detector: DebtDetector | None = None
         self.complexity_analyzer = ComplexityAnalyzer()
@@ -116,8 +116,9 @@ class UnifiedScanner:
         if functions:
             total = 0
             for fn in functions:
-                if hasattr(fn, "end_lineno") and hasattr(fn, "lineno"):
-                    total += fn.end_lineno - fn.lineno
+                end_lineno: int = getattr(fn, "end_lineno", 0)
+                lineno: int = getattr(fn, "lineno", 0)
+                total += end_lineno - lineno
             avg_len = total / len(functions)
 
         has_main = any(

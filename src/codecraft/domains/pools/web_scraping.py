@@ -1,9 +1,11 @@
+from typing import Any
+
 from codecraft.domains.registry import Domain, DomainRegistry
 from codecraft.engines.templates import DomainData, generate_from_template
 
 
-def _make_recipe(concept: str):
-    def recipe(domain_name: str, target_concepts: list, difficulty: int):
+def _make_recipe(concept: str) -> Any:
+    def recipe(domain_name: str, target_concepts: list[str], difficulty: int) -> Any:
         dd = DomainData(
             domain_name="web_scraping",
             description="HTML parsing, API responses, pagination, and data extraction pipelines",

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import typer
 from rich.panel import Panel
 from rich.table import Table
@@ -47,21 +49,24 @@ def vacuum_stats() -> None:
     console.print(table)
 
 
-def _get_db_stats(repo) -> dict:
-    info = {}
-    tables_info = []
+def _get_db_stats(repo: Any) -> dict[str, Any]:
+    info: dict[str, Any] = {}
+    tables_info: list[tuple[str, Any, str]] = []
     for tbl in ["files", "file_concepts", "debt_items", "challenge_history", "spaced_repetition", "settings"]:
         row = repo.conn.execute(f"SELECT COUNT(*) FROM {tbl}").fetchone()
         count = row[0] if row else 0
         tables_info.append((tbl, count, f"{count * 0.5:.0f} KB" if count > 0 else "<1 KB"))
     info["tables"] = tables_info
-    info["files"] = repo.conn.execute("SELECT COUNT(*) FROM files").fetchone()[0] or 0
-    info["mappings"] = repo.conn.execute("SELECT COUNT(*) FROM file_concepts").fetchone()[0] or 0
-    info["debt"] = repo.conn.execute("SELECT COUNT(*) FROM debt_items").fetchone()[0] or 0
+    row_files = repo.conn.execute("SELECT COUNT(*) FROM files").fetchone()
+    info["files"] = row_files[0] if row_files else 0
+    row_mappings = repo.conn.execute("SELECT COUNT(*) FROM file_concepts").fetchone()
+    info["mappings"] = row_mappings[0] if row_mappings else 0
+    row_debt = repo.conn.execute("SELECT COUNT(*) FROM debt_items").fetchone()
+    info["debt"] = row_debt[0] if row_debt else 0
     return info
 
 
-def _deduplicate_file_concepts(repo) -> None:
+def _deduplicate_file_concepts(repo: Any) -> None:
     repo.conn.execute("""
         DELETE FROM file_concepts
         WHERE (file_path, concept_name, occurrences) IN (
@@ -76,7 +81,7 @@ def _deduplicate_file_concepts(repo) -> None:
     """)
 
 
-def _clean_orphaned_records(repo) -> None:
+def _clean_orphaned_records(repo: Any) -> None:
     repo.conn.execute("""
         DELETE FROM file_concepts
         WHERE file_path NOT IN (SELECT path FROM files)
@@ -87,5 +92,5 @@ def _clean_orphaned_records(repo) -> None:
     """)
 
 
-def _rebuild_indices(repo) -> None:
+def _rebuild_indices(repo: Any) -> None:
     repo.conn.execute("CHECKPOINT")

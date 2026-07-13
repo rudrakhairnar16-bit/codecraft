@@ -92,11 +92,13 @@ class _TSParser(TreeSitterParser):
     ]
 
 
-from tree_sitter_javascript import language as _js_lang_fn
-_JSParser.LANGUAGE_FN = _js_lang_fn
+from tree_sitter_javascript import language as _js_lang_fn  # noqa: E402
 
-from tree_sitter_typescript import language_typescript as _ts_lang_fn
-_TSParser.LANGUAGE_FN = _ts_lang_fn
+_JSParser.LANGUAGE_FN = _js_lang_fn  # type: ignore[assignment]
+
+from tree_sitter_typescript import language_typescript as _ts_lang_fn  # noqa: E402
+
+_TSParser.LANGUAGE_FN = _ts_lang_fn  # type: ignore[assignment]
 
 JavaScriptParser = _JSParser
 TypeScriptParser = _TSParser

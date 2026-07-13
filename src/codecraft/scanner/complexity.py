@@ -4,7 +4,7 @@ import ast
 
 
 class ComplexityAnalyzer(ast.NodeVisitor):
-    def __init__(self):
+    def __init__(self) -> None:
         self.complexity: int = 1
         self._conditions: set[int] = set()
 

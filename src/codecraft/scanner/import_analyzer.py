@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import ast
+from typing import Any
 
 
 class ImportAnalyzer(ast.NodeVisitor):
-    def __init__(self):
+    def __init__(self) -> None:
         self.imports: list[str] = []
         self.modules: set[str] = set()
         self.names: set[str] = set()
@@ -22,7 +23,7 @@ class ImportAnalyzer(ast.NodeVisitor):
         }
         self.third_party: set[str] = set()
 
-    def analyze(self, tree: ast.AST) -> dict:
+    def analyze(self, tree: ast.AST) -> dict[str, Any]:
         self.imports = []
         self.modules = set()
         self.names = set()

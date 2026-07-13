@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 import threading
 import time
-from datetime import datetime
+from typing import Any
 
 import typer
 from rich.panel import Panel
@@ -11,8 +11,8 @@ from rich.table import Table
 
 from codecraft.cli.deps import get_repo
 from codecraft.engines.remix import RemixEngine
-from codecraft.models.challenge import ChallengeResult
-from codecraft.models.concept import ConceptTaxonomy
+from codecraft.models.challenge import Challenge, ChallengeResult
+from codecraft.models.concept import ConceptTaxonomy, Tier
 from codecraft.scanner.concept_extractor import ConceptExtractor
 from codecraft.utils.colors import console
 
@@ -47,7 +47,7 @@ def _read_multiline_input(timer_expired: threading.Event) -> str:
     return "\n".join(lines)
 
 
-@practice_app.command("start")
+@practice_app.command("start", epilog="Example: codecraft practice start list_comprehension --domain gaming --timeout 10")
 def start_practice(
     concept: str = typer.Argument(
         ..., help="Concept to practice (e.g. 'list_comprehension', 'dataclass')"
@@ -69,7 +69,11 @@ def start_practice(
     if resolved != concept:
         console.print(f"[info]Matched concept:[/info] {resolved}")
 
-    challenge = remix.generate_exercise(resolved, domain)
+    try:
+        challenge = remix.generate_exercise(resolved, domain)
+    except Exception as e:
+        console.print(f"[error]Failed to generate exercise: {e}[/error]")
+        raise typer.Exit(1)
     if challenge is None:
         console.print(f"[error]Could not generate exercise for '{resolved}'[/error]")
         next_steps = _get_beginner_concepts()
@@ -134,24 +138,27 @@ def start_practice(
         time_taken_seconds=elapsed,
         domain=challenge.domain,
     )
-    repo.insert_challenge_result(result)
+    try:
+        repo.insert_challenge_result(result)
+    except Exception as e:
+        console.print(f"[error]Failed to save practice result: {e}[/error]")
+        raise typer.Exit(1)
 
     _display_streak(repo)
 
 
 def _get_beginner_concepts() -> list[str]:
-    from codecraft.models.concept import ConceptTaxonomy
-    return [c.name for c in ConceptTaxonomy.by_tier(1)][:8]
+    return [c.name for c in ConceptTaxonomy.by_tier(Tier.SEED)][:8]
 
 
-def _display_streak(repo) -> None:
+def _display_streak(repo: Any) -> None:
     streak = repo.get_streak_data()
     if streak["current_streak"] > 1:
         console.print(f"[success]Streak: {streak['current_streak']} days![/success]")
 
 
-def _analyze_solution(code: str, challenge) -> dict:
-    result = {
+def _analyze_solution(code: str, challenge: Challenge) -> dict[str, Any]:
+    result: dict[str, Any] = {
         "parses": False,
         "has_target_concept": False,
         "complexity": 0,
@@ -241,7 +248,7 @@ def _code_uses_concept(code: str, concept_name: str) -> bool:
     return concept_name in concepts
 
 
-def _show_analysis(analysis: dict, challenge, concept: str = "", domain_str: str = "") -> None:
+def _show_analysis(analysis: dict[str, Any], challenge: Challenge, concept: str = "", domain_str: str = "") -> None:
     console.print("\n" + "=" * 60)
     console.print(Panel("[bold]Solution Analysis[/bold]", border_style="green"))
 
@@ -337,7 +344,7 @@ LEARNING_PATHS = {
 }
 
 
-@practice_app.command("path")
+@practice_app.command("path", epilog="Example: codecraft practice path beginner --step 3")
 def show_path(
     path_name: str | None = typer.Argument(
         None, help="Path name: beginner, intermediate, advanced"
@@ -387,7 +394,7 @@ def show_path(
         start_practice(concept=concept, domain=domain, timeout_minutes=10)
 
 
-def _load_custom_paths() -> dict:
+def _load_custom_paths() -> dict[str, Any]:
     paths = {}
     try:
         from codecraft.cli.deps import get_repo
@@ -411,7 +418,7 @@ except Exception:
     pass
 
 
-@practice_app.command("path-create")
+@practice_app.command("path-create", epilog="Example: codecraft practice path-create mypath --concepts list_ops,dict_ops")
 def create_path(
     name: str = typer.Argument(..., help="Learning path name"),
     concepts: str = typer.Option(..., "--concepts", "-c", help="Comma-separated concept names"),
@@ -443,7 +450,7 @@ def create_path(
     console.print(f"[success]Created learning path '{name}' with {len(valid)} concepts[/success]")
 
 
-@practice_app.command("list")
+@practice_app.command("list", epilog="Example: codecraft practice list --search comprehension")
 def list_concepts(
     search: str | None = typer.Argument(None, help="Search for concepts by name"),
 ) -> None:

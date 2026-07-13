@@ -219,3 +219,23 @@ class TestBugFixes:
         repo.insert_debt_item(item)
         result = runner.invoke(app, ["debt", "challenge"])
         assert result.exit_code == 0
+
+    def test_scan_file_nonexistent(self, repo, runner):
+        result = runner.invoke(app, ["scan", "file", "nonexistent.py"])
+        assert result.exit_code != 0
+
+    def test_suggest_empty_db(self, repo, runner):
+        result = runner.invoke(app, ["suggest", "next"])
+        assert result.exit_code == 0
+
+    def test_schedule_empty_queue(self, repo, runner):
+        result = runner.invoke(app, ["schedule", "queue"])
+        assert result.exit_code == 0
+
+    def test_debt_list_empty(self, repo, runner):
+        result = runner.invoke(app, ["debt", "list"])
+        assert result.exit_code == 0
+
+    def test_dashboard_summary(self, repo, runner):
+        result = runner.invoke(app, ["dashboard", "summary"])
+        assert result.exit_code == 0

@@ -6,7 +6,7 @@ from codecraft.models.file import FileConcept
 
 
 class ConceptExtractor(ast.NodeVisitor):
-    def __init__(self):
+    def __init__(self) -> None:
         self.concepts: dict[str, int] = {}
         self._imported_names: set[str] = set()
         self._imported_modules: set[str] = set()
@@ -244,6 +244,9 @@ class ConceptExtractor(ast.NodeVisitor):
 
     def visit_Assign(self, node: ast.Assign) -> None:
         self._add("variable_assignment")
+        for target in node.targets:
+            if isinstance(target, ast.Name) and target.id == "__slots__":
+                self._add("slots")
         self.generic_visit(node)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
@@ -427,12 +430,12 @@ class ConceptExtractor(ast.NodeVisitor):
         self.generic_visit(node)
 
     if hasattr(ast, "TypeAlias"):
-        def visit_TypeAlias(self, node: ast.TypeAlias) -> None:  # type: ignore[attr-defined]
+        def visit_TypeAlias(self, node: ast.TypeAlias) -> None:  # noqa: N802
             self._add("type_alias")
             self.generic_visit(node)
 
     if hasattr(ast, "TryStar"):
-        def visit_TryStar(self, node: ast.TryStar) -> None:  # type: ignore[attr-defined]
+        def visit_TryStar(self, node: ast.TryStar) -> None:  # noqa: N802
             self._add("try_except_star")
             self._try_count += 1
             self._except_count += len(node.handlers)

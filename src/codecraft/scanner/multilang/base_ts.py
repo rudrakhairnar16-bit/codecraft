@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from tree_sitter import Language, Parser, Query, QueryCursor
 
 from codecraft.models.file import FileConcept
@@ -7,10 +9,11 @@ from codecraft.scanner.multilang.parser import BaseParser
 
 
 class TreeSitterParser(BaseParser):
-    LANGUAGE_FN = None
+    LANGUAGE_FN: Callable[[], Language] | None = None
     QUERIES: list[tuple[str, str]] = []
 
     def __init__(self) -> None:
+        assert self.LANGUAGE_FN is not None
         lang = Language(self.LANGUAGE_FN())
         self.parser = Parser(lang)
         self._queries = self._build_queries(lang)

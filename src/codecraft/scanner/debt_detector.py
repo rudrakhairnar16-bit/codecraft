@@ -19,14 +19,17 @@ class DebtDetector(ast.NodeVisitor):
         return self.debt_items
 
     def _get_line(self, node: ast.AST) -> str:
-        if hasattr(node, "lineno") and node.lineno <= len(self._lines):
-            return self._lines[node.lineno - 1].strip()
+        lineno: int = getattr(node, "lineno", 0)
+        if lineno and lineno <= len(self._lines):
+            return self._lines[lineno - 1].strip()
         return ""
 
     def _get_snippet(self, node: ast.AST, context_lines: int = 1) -> str:
-        if hasattr(node, "lineno") and hasattr(node, "end_lineno"):
-            start = max(0, node.lineno - 1 - context_lines)
-            end = min(len(self._lines), node.end_lineno + context_lines)
+        lineno: int = getattr(node, "lineno", 0)
+        end_lineno: int = getattr(node, "end_lineno", 0)
+        if lineno and end_lineno:
+            start = max(0, lineno - 1 - context_lines)
+            end = min(len(self._lines), end_lineno + context_lines)
             return "\n".join(self._lines[start:end])
         return ""
 
