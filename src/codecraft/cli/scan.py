@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import ast
-import time
+import json as _json
 from pathlib import Path
 
 import typer
@@ -13,8 +12,8 @@ from codecraft.db.repository import Repository
 from codecraft.engines.debt_tracker import DebtTrackerEngine
 from codecraft.models.file import FileRecord
 from codecraft.scanner.ast_parser import file_hash, file_stats
-from codecraft.scanner.debt_detector import DebtDetector
 from codecraft.scanner.unified import UnifiedScanner
+from codecraft.scanner.multilang import Language, LanguageDetector
 from codecraft.utils.colors import console
 
 scan_app = typer.Typer(name="scan", no_args_is_help=True)
@@ -28,17 +27,25 @@ def scan_directory(
     dry_run: bool = typer.Option(False, "--dry-run", "-n", help="Preview without persisting"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
 ) -> None:
-    pattern = "**/*.py" if recursive else "*.py"
+    supported_exts = set(LanguageDetector.supported_extensions())
+    patterns = ["**/*"] if recursive else ["*"]
     scanner = UnifiedScanner()
     repo = get_repo()
 
-    files = list(Path(path).glob(pattern))
+    files = []
+    for p in Path(path).rglob("*") if recursive else Path(path).glob("*"):
+        if p.suffix.lower() in supported_exts and p.is_file():
+            files.append(p)
+    files.sort()
+
     if not files:
-        console.print(f"[warning]No .py files found in {path}[/warning]")
+        exts = ", ".join(supported_exts)
+        console.print(f"[warning]No supported files ({exts}) found in {path}[/warning]")
         raise typer.Exit()
 
     if not json_output:
-        console.print(f"[title]Scanning {len(files)} Python files...[/title]")
+        lang_count = len([f for f in files if f.suffix == ".py"])
+        console.print(f"[title]Scanning {len(files)} files ({lang_count} Python, {len(files) - lang_count} other)...[/title]")
 
     scanned = 0
     for file in files:
@@ -64,22 +71,31 @@ def scan_directory(
             record.import_count = len(report.imports)
             repo.upsert_file(record)
 
-            source = file.read_text(encoding="utf-8", errors="replace")
-            tree = ast.parse(source)
+            lang = LanguageDetector.detect(str(file))
+            if lang == Language.PYTHON:
+                import ast
+                source = file.read_text(encoding="utf-8", errors="replace")
+                try:
+                    tree = ast.parse(source)
+                    concepts = scanner.concept_extractor.extract(tree)
+                    if isinstance(concepts, dict):
+                        repo.upsert_file_concepts(file, concepts)
 
-            concepts = scanner.concept_extractor.extract(tree)
-            if isinstance(concepts, dict):
-                repo.upsert_file_concepts(file, concepts)
+                    from codecraft.scanner.debt_detector import DebtDetector
+                    debt_detector = DebtDetector(source, file)
+                    debt_items = debt_detector.detect(tree)
+                    debt_tracker = DebtTrackerEngine(repo)
+                    debt_tracker.scan_and_track(debt_items)
+                except SyntaxError:
+                    pass
+            else:
+                concepts = scanner.multi_scanner.parse_file(str(file))
+                if concepts:
+                    repo.upsert_file_concepts(file, concepts)
 
-            debt_detector = DebtDetector(source, file)
-            debt_items = debt_detector.detect(tree)
-
-            debt_tracker = DebtTrackerEngine(repo)
-            debt_tracker.scan_and_track(debt_items)
             scanned += 1
 
     if json_output:
-        import json as _json
         data = {"files_scanned": scanned}
         console.print(_json.dumps(data))
         return
