@@ -12,9 +12,9 @@
 | D4 | Concept detection is heuristic — misses edge cases | Medium | ✅ DONE | 5 new AST detectors: walrus, break/continue, global/nonlocal, set/dict literals, type_alias (3.12+), try_except_star (3.11+) |
 | D5 | No CI/CD integration (GitHub Actions, pre-commit hooks) | Low | ✅ DONE | `codecraft precommit install` generates `.pre-commit-config.yaml` |
 | D6 | Exercise templates are English-only | Low | ✅ DONE | `utils/i18n.py` with en/hi locales; `--lang` flag |
-| D7 | No VS Code extension / LSP integration | Low | ❌ OPEN | Build LSP server wrapper; publish VS Code extension |
+| D7 | No VS Code extension / LSP integration | Low | ✅ DONE | Minimal VS Code extension with tree views, commands (scan, summary, debt, suggest), webview panel |
 | D8 | DuckDB file can grow unbounded with repeated scans | Medium | ✅ DONE | `codecraft vacuum run` deduplicates and compacts |
-| D9 | No authentication/multi-user support | Low | ❌ OPEN | Not needed for CLI tool |
+| D9 | No authentication/multi-user support | Low | ✅ DONE | Profile system: `codecraft profile create/switch/list/delete`; isolated DB per profile |
 | D10 | No `--dry-run` flag for scan commands | Low | ✅ DONE | `--dry-run` / `-n` on `scan dir`; previews without persisting |
 | D11 | No `--json` output flag for any command | Medium | ✅ DONE | `--json` / `-j` on `status`, `scan dir` |
 | D12 | Learning paths are hardcoded; no way to create custom paths | Medium | ✅ DONE | `codecraft practice path-create <name> --concepts <list>` |
@@ -146,8 +146,8 @@ export json           ✅    export csv            ✅
 
 ## 8. Post-Audit Improvements Summary
 
-### Drawbacks Fixed (10/15 closed)
-✅ D2 (timer fix), D5 (precommit), D6 (i18n), D8 (vacuum), D10 (dry-run), D11 (json), D12 (custom paths), D13 (DAG), D14 (CLI tests), D15 (help text)
+### Drawbacks Fixed (15/15 closed)
+✅ D1 (multi-lang tree-sitter), D2 (timer fix), D3 (cloud sync), D4 (concept edge cases), D5 (precommit), D6 (i18n), D7 (VS Code extension), D8 (vacuum), D9 (profile system), D10 (dry-run), D11 (json), D12 (custom paths), D13 (DAG), D14 (CLI tests), D15 (help text)
 
 ### 7-Dev Panel Criticism Addressed
 | Dev | Criticism | Fix |

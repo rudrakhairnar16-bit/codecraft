@@ -1,0 +1,71 @@
+{
+  "name": "codecraft-vscode",
+  "displayName": "CodeCraft",
+  "description": "Personal skill forge — scan your code, detect concepts, track learning debt",
+  "version": "0.1.0",
+  "publisher": "codecraft",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Education",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "codecraft.scanWorkspace",
+        "title": "CodeCraft: Scan Workspace"
+      },
+      {
+        "command": "codecraft.showSummary",
+        "title": "CodeCraft: Show Summary"
+      },
+      {
+        "command": "codecraft.debtReport",
+        "title": "CodeCraft: Debt Report"
+      },
+      {
+        "command": "codecraft.suggestNext",
+        "title": "CodeCraft: Suggest Next Steps"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "codecraft-sidebar",
+          "title": "CodeCraft",
+          "icon": "icon.png"
+        }
+      ]
+    },
+    "views": {
+      "codecraft-sidebar": [
+        {
+          "id": "codecraft.conceptsView",
+          "name": "Concepts"
+        },
+        {
+          "id": "codecraft.debtView",
+          "name": "Learning Debt"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "CodeCraft",
+      "properties": {
+        "codecraft.cliPath": {
+          "type": "string",
+          "default": "codecraft",
+          "description": "Path to the codecraft CLI executable"
+        }
+      }
+    }
+  }
+}

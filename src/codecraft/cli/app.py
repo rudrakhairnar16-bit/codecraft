@@ -164,6 +164,7 @@ def _register_apps():
     import codecraft.cli.vacuum as vc
     import codecraft.cli.precommit_hook as pc
     import codecraft.cli.sync_cmd as sy
+    import codecraft.cli.profile_cmd as pf
 
     app.add_typer(sc.scan_app, name="scan", help="Scan Python files and extract concept fingerprints")
     app.add_typer(dt.debt_app, name="debt", help="Track and resolve learning debt")
@@ -181,6 +182,7 @@ def _register_apps():
     app.add_typer(vc.vacuum_app, name="vacuum", help="Compact and deduplicate database")
     app.add_typer(pc.precommit_app, name="precommit", help="Generate pre-commit hook config")
     app.add_typer(sy.sync_app, name="sync", help="Export/import your data for backup or migration")
+    app.add_typer(pf.profile_app, name="profile", help="Manage multi-user profiles with isolated databases")
 
 
 _register_apps()

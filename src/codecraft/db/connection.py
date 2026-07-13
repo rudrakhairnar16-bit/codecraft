@@ -11,7 +11,11 @@ class Database:
 
     def __init__(self, db_path: Path | None = None):
         if db_path is None:
-            db_dir = Path.home() / ".codecraft"
+            try:
+                from codecraft.cli.profile_cmd import get_profile_dir
+                db_dir = get_profile_dir()
+            except Exception:
+                db_dir = Path.home() / ".codecraft"
             db_dir.mkdir(parents=True, exist_ok=True)
             db_path = db_dir / "codecraft.duckdb"
         self.db_path = db_path
@@ -79,7 +83,11 @@ class Database:
     def reset(cls) -> None:
         if cls._instance is not None:
             cls._instance.close()
-        db_dir = Path.home() / ".codecraft"
+        try:
+            from codecraft.cli.profile_cmd import get_profile_dir
+            db_dir = get_profile_dir()
+        except Exception:
+            db_dir = Path.home() / ".codecraft"
         for f in db_dir.glob("codecraft*"):
             try:
                 f.unlink()
