@@ -78,6 +78,11 @@ class ConceptTaxonomy:
         "yield_generator": ["function_def", "for_loop"],
         "yield_from": ["yield_generator"],
         "contextlib": ["context_manager", "import_basic"],
+        "walrus_operator": ["variable_assignment", "comparisons"],
+        "break_continue": ["for_loop", "while_loop"],
+        "global_nonlocal": ["function_def"],
+        "type_alias": ["type_hints_basic"],
+        "try_except_star": ["try_except", "exception_multiple"],
     }
 
     @classmethod
@@ -192,3 +197,9 @@ ALL("callable", Tier.CANOPY, "oop", "__call__ making objects callable")
 ALL("getattr_protocol", Tier.CANOPY, "oop", "__getattr__ and __getattribute__")
 ALL("cython_ctypes", Tier.CANOPY, "extensions", "C extensions via ctypes or CFFI")
 ALL("async_iterator", Tier.CANOPY, "concurrency", "Async iterators with __aiter__/__anext__")
+
+ALL("walrus_operator", Tier.ROOT, "basics", "Walrus operator := for assignment expressions")
+ALL("break_continue", Tier.SEED, "control_flow", "break and continue for loop control")
+ALL("global_nonlocal", Tier.ROOT, "basics", "global and nonlocal for variable scope")
+ALL("type_alias", Tier.BRANCH, "types", "type statement for type aliases (3.12+)")
+ALL("try_except_star", Tier.BRANCH, "error_handling", "except* for exception groups (3.11+)")

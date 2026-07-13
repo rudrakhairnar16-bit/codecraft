@@ -9,7 +9,7 @@
 | D1 | No multi-language support — only Python AST parsing | High | ⏳ PARTIAL | `utils/i18n.py` (en/hi locales); tree-sitter TBD |
 | D2 | Practice timer uses threading — not precise under heavy I/O | Medium | ✅ DONE | `threading.Timer` + `Event` flag; accepts coarse timeout granularity |
 | D3 | No cloud sync — all data local to DuckDB file | Medium | ❌ OPEN | Add optional SQLite sync or import/export to cloud (S3, GCS) |
-| D4 | Concept detection is heuristic — misses edge cases | Medium | ⏳ PARTIAL | AST-based detection improved with 18 new detectors |
+| D4 | Concept detection is heuristic — misses edge cases | Medium | ✅ DONE | 5 new AST detectors: walrus, break/continue, global/nonlocal, set/dict literals, type_alias (3.12+), try_except_star (3.11+) |
 | D5 | No CI/CD integration (GitHub Actions, pre-commit hooks) | Low | ✅ DONE | `codecraft precommit install` generates `.pre-commit-config.yaml` |
 | D6 | Exercise templates are English-only | Low | ✅ DONE | `utils/i18n.py` with en/hi locales; `--lang` flag |
 | D7 | No VS Code extension / LSP integration | Low | ❌ OPEN | Build LSP server wrapper; publish VS Code extension |

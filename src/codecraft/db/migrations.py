@@ -117,3 +117,12 @@ def run_migrations(conn: duckdb.DuckDBPyConnection) -> None:
                 [c.name, c.tier.value, c.category, c.description],
             )
         conn.execute("INSERT INTO schema_version (version) VALUES (2)")
+
+    if current_version < 3:
+        from codecraft.models.concept import ConceptTaxonomy
+        for c in ConceptTaxonomy.all():
+            conn.execute(
+                "INSERT OR IGNORE INTO concepts (name, tier, category, description) VALUES (?, ?, ?, ?)",
+                [c.name, c.tier.value, c.category, c.description],
+            )
+        conn.execute("INSERT INTO schema_version (version) VALUES (3)")

@@ -369,6 +369,34 @@ class ConceptExtractor(ast.NodeVisitor):
         self._add("match_case")
         self.generic_visit(node)
 
+    def visit_NamedExpr(self, node: ast.NamedExpr) -> None:
+        self._add("walrus_operator")
+        self.generic_visit(node)
+
+    def visit_Break(self, node: ast.Break) -> None:
+        self._add("break_continue")
+        self.generic_visit(node)
+
+    def visit_Continue(self, node: ast.Continue) -> None:
+        self._add("break_continue")
+        self.generic_visit(node)
+
+    def visit_Global(self, node: ast.Global) -> None:
+        self._add("global_nonlocal")
+        self.generic_visit(node)
+
+    def visit_Nonlocal(self, node: ast.Nonlocal) -> None:
+        self._add("global_nonlocal")
+        self.generic_visit(node)
+
+    def visit_Set(self, node: ast.Set) -> None:
+        self._add("set_ops")
+        self.generic_visit(node)
+
+    def visit_Dict(self, node: ast.Dict) -> None:
+        self._add("dict_ops")
+        self.generic_visit(node)
+
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         self._add("variable_assignment")
         self.generic_visit(node)
@@ -397,6 +425,18 @@ class ConceptExtractor(ast.NodeVisitor):
 
     def visit_Delete(self, node: ast.Delete) -> None:
         self.generic_visit(node)
+
+    if hasattr(ast, "TypeAlias"):
+        def visit_TypeAlias(self, node: ast.TypeAlias) -> None:  # type: ignore[attr-defined]
+            self._add("type_alias")
+            self.generic_visit(node)
+
+    if hasattr(ast, "TryStar"):
+        def visit_TryStar(self, node: ast.TryStar) -> None:  # type: ignore[attr-defined]
+            self._add("try_except_star")
+            self._try_count += 1
+            self._except_count += len(node.handlers)
+            self.generic_visit(node)
 
     def visit_Tuple(self, node: ast.Tuple) -> None:
         if isinstance(node.ctx, ast.Store):
