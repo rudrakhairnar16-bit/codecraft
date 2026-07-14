@@ -43,6 +43,58 @@ class TestScanCommand:
         result = runner.invoke(app, ["scan", "dir", str(d), "--dry-run"])
         assert result.exit_code == 0
 
+    def test_scan_dir_no_supported(self, repo, runner, tmp_path):
+        d = tmp_path / "project"
+        d.mkdir()
+        (d / "readme.md").write_text("# readme")
+        result = runner.invoke(app, ["scan", "dir", str(d)])
+        assert result.exit_code == 0
+
+    def test_scan_dir_json(self, repo, runner, tmp_path):
+        d = tmp_path / "project"
+        d.mkdir()
+        (d / "test.py").write_text("x = 1")
+        result = runner.invoke(app, ["scan", "dir", str(d), "--json"])
+        assert result.exit_code == 0
+
+    def test_scan_dir_with_persist(self, db, runner, tmp_path):
+        d = tmp_path / "project"
+        d.mkdir()
+        (d / "test.py").write_text("x = 1")
+        result = runner.invoke(app, ["scan", "dir", str(d)])
+        assert result.exit_code == 0
+
+    def test_scan_file(self, repo, runner, fixtures_dir):
+        result = runner.invoke(app, ["scan", "file", str(fixtures_dir / "beginner.py")])
+        assert result.exit_code == 0
+
+    def test_scan_file_syntax_error(self, repo, runner, tmp_path):
+        f = tmp_path / "bad.py"
+        f.write_text("def broken(:")
+        result = runner.invoke(app, ["scan", "file", str(f)])
+        assert result.exit_code != 0
+
+    def test_scan_file_not_found(self, repo, runner, tmp_path):
+        result = runner.invoke(app, ["scan", "file", str(tmp_path / "nonexistent.py")])
+        assert result.exit_code != 0
+
+    def test_scan_file_unsupported_type(self, runner, tmp_path):
+        f = tmp_path / "readme.md"
+        f.write_text("# hello")
+        result = runner.invoke(app, ["scan", "file", str(f)])
+        assert result.exit_code != 0
+
+    def test_scan_dir_skip_hidden(self, repo, runner, tmp_path):
+        d = tmp_path / "project"
+        d.mkdir()
+        hidden = d / ".hidden"
+        hidden.mkdir()
+        (hidden / "test.py").write_text("x = 1")
+        result = runner.invoke(app, ["scan", "dir", str(d), "--dry-run"])
+        assert result.exit_code == 0
+
+
+
 
 class TestPracticeCommand:
     def test_practice_list(self, repo, runner):
@@ -55,6 +107,18 @@ class TestPracticeCommand:
 
     def test_practice_list_no_match(self, repo, runner):
         result = runner.invoke(app, ["practice", "list", "zzz_nonexistent"])
+        assert result.exit_code == 0
+
+    def test_practice_path(self, repo, runner):
+        result = runner.invoke(app, ["practice", "path"])
+        assert result.exit_code == 0
+
+    def test_practice_path_with_arg(self, repo, runner):
+        result = runner.invoke(app, ["practice", "path", "beginner"])
+        assert result.exit_code == 0
+
+    def test_practice_path_create(self, repo, runner):
+        result = runner.invoke(app, ["practice", "path-create", "mypath", "--concepts", "for_loop,if_else"])
         assert result.exit_code == 0
 
 
@@ -174,6 +238,80 @@ class TestSuggestCommand:
         repo.upsert_file_concepts(Path("test.py"), {
             "for_loop": FileConcept(concept_name="for_loop", occurrences=3),
         })
+        result = runner.invoke(app, ["suggest", "all"])
+        assert result.exit_code == 0
+
+
+class TestSuggestWithAllConcepts:
+    def test_suggest_next_all_concepts_known(self, db, runner):
+        from codecraft.db.repository import Repository
+        from codecraft.models.concept import ConceptTaxonomy
+        from codecraft.models.file import FileConcept
+        conn = db.connect()
+        repo = Repository(conn)
+        concepts = {c.name: FileConcept(concept_name=c.name, occurrences=1) for c in ConceptTaxonomy.all()}
+        repo.upsert_file_concepts(Path("test.py"), concepts)
+        result = runner.invoke(app, ["suggest", "next"])
+        assert result.exit_code == 0
+
+    def test_suggest_all_all_concepts_known(self, db, runner):
+        from codecraft.db.repository import Repository
+        from codecraft.models.concept import ConceptTaxonomy
+        from codecraft.models.file import FileConcept
+        conn = db.connect()
+        repo = Repository(conn)
+        concepts = {c.name: FileConcept(concept_name=c.name, occurrences=1) for c in ConceptTaxonomy.all()}
+        repo.upsert_file_concepts(Path("test.py"), concepts)
+        result = runner.invoke(app, ["suggest", "all"])
+        assert result.exit_code == 0
+
+
+class TestSuggestWithDataViaSingleton:
+    def test_suggest_next_with_concepts(self, db, runner):
+        from codecraft.db.repository import Repository
+        from codecraft.models.file import FileConcept
+        from datetime import datetime
+        from codecraft.models.debt import DebtItem
+        conn = db.connect()
+        repo = Repository(conn)
+        repo.upsert_file(FileRecord(path=Path("test.py"), hash="abc", size=100, lines=10))
+        repo.upsert_file_concepts(Path("test.py"), {
+            "for_loop": FileConcept(concept_name="for_loop", occurrences=3),
+            "if_else": FileConcept(concept_name="if_else", occurrences=2),
+        })
+        item = DebtItem(
+            id=1, file_path=Path("test.py"), pattern_type="bare_except",
+            pattern_location="5:0", old_snippet="except:",
+            suggestion="Use specific exception", alternative_code="except ValueError:",
+            difficulty=1, tier_gap=1, resolved=False, created=datetime.now(),
+        )
+        repo.insert_debt_item(item)
+        from codecraft.models.review import SpacedRepetitionCard
+        repo.upsert_card(SpacedRepetitionCard(
+            concept_name="for_loop", ease_factor=2.5, interval_days=5, strength=0.3,
+        ))
+        result = runner.invoke(app, ["suggest", "next"])
+        assert result.exit_code == 0
+
+    def test_suggest_all_with_concepts(self, db, runner):
+        from codecraft.db.repository import Repository
+        from codecraft.models.file import FileConcept
+        from datetime import datetime
+        from codecraft.models.debt import DebtItem
+        conn = db.connect()
+        repo = Repository(conn)
+        repo.upsert_file(FileRecord(path=Path("test.py"), hash="abc", size=100, lines=10))
+        repo.upsert_file_concepts(Path("test.py"), {
+            "for_loop": FileConcept(concept_name="for_loop", occurrences=3),
+            "if_else": FileConcept(concept_name="if_else", occurrences=2),
+        })
+        item = DebtItem(
+            id=1, file_path=Path("test.py"), pattern_type="bare_except",
+            pattern_location="5:0", old_snippet="except:",
+            suggestion="Use specific exception", alternative_code="except ValueError:",
+            difficulty=1, tier_gap=1, resolved=False, created=datetime.now(),
+        )
+        repo.insert_debt_item(item)
         result = runner.invoke(app, ["suggest", "all"])
         assert result.exit_code == 0
 
@@ -784,4 +922,226 @@ class TestStartWizard:
             ["test.py", "for_loop", 3],
         )
         result = runner.invoke(app, ["start"])
+        assert result.exit_code == 0
+
+
+class TestStartWizardWithDataViaSingleton:
+    def test_start_wizard_with_known_concepts(self, db, runner):
+        from codecraft.db.repository import Repository
+        from codecraft.models.file import FileConcept
+        conn = db.connect()
+        repo = Repository(conn)
+        repo.upsert_file_concepts(Path("test.py"), {
+            "for_loop": FileConcept(concept_name="for_loop", occurrences=3),
+        })
+        result = runner.invoke(app, ["start"])
+        assert result.exit_code == 0
+
+
+class TestInitReset:
+    def test_init_reset(self, repo, runner):
+        result = runner.invoke(app, ["init", "reset"], input="y\n")
+        assert result.exit_code == 0
+
+    def test_init_reset_cancel(self, repo, runner):
+        result = runner.invoke(app, ["init", "reset"], input="n\n")
+        assert result.exit_code == 0
+
+
+class TestLearnCommandExtended:
+    def test_learn_concept_partial_match(self, repo, runner):
+        result = runner.invoke(app, ["learn", "concept", "list"])
+        assert result.exit_code == 0
+
+    def test_learn_concept_already_detected(self, db, runner):
+        from codecraft.db.repository import Repository
+        from codecraft.models.file import FileConcept
+        from codecraft.models.review import SpacedRepetitionCard
+        conn = db.connect()
+        repo = Repository(conn)
+        repo.upsert_file_concepts(Path("test.py"), {
+            "list_comprehension": FileConcept(concept_name="list_comprehension", occurrences=3),
+        })
+        repo.upsert_card(SpacedRepetitionCard(
+            concept_name="list_comprehension", ease_factor=2.5, interval_days=1, strength=0.9,
+        ))
+        result = runner.invoke(app, ["learn", "concept", "list_comprehension"])
+        assert result.exit_code == 0
+
+
+class TestScanCommandExtended:
+    def test_scan_dir_with_js_file(self, repo, runner, tmp_path):
+        d = tmp_path / "project"
+        d.mkdir()
+        (d / "test.js").write_text("const x = 1;")
+        result = runner.invoke(app, ["scan", "dir", str(d), "--dry-run"])
+        assert result.exit_code == 0
+
+    def test_scan_dir_watch_no_files(self, repo, runner, tmp_path):
+        from unittest.mock import patch
+        d = tmp_path / "empty"
+        d.mkdir()
+        with patch("codecraft.cli.scan._watch_directory", return_value=None):
+            result = runner.invoke(app, ["scan", "dir", str(d), "--watch"])
+        assert result.exit_code == 0
+
+    def test_scan_dir_with_results_and_json(self, repo, runner, tmp_path):
+        d = tmp_path / "project"
+        d.mkdir()
+        (d / "test.py").write_text("x = 1")
+        result = runner.invoke(app, ["scan", "dir", str(d), "--json"])
+        assert result.exit_code == 0
+
+
+class TestStatsSessionsWithHistory:
+    def test_stats_sessions_with_history_via_db(self, db, runner):
+        from codecraft.db.repository import Repository
+        from codecraft.models.challenge import ChallengeResult
+        conn = db.connect()
+        repo = Repository(conn)
+        for i in range(3):
+            r = ChallengeResult(
+                challenge_id=f"h{i}", concept_name="list_comprehension",
+                correct=True, time_taken_seconds=120 + i * 10, domain="gaming",
+            )
+            repo.insert_challenge_result(r)
+        result = runner.invoke(app, ["stats", "sessions"])
+        assert result.exit_code == 0
+
+    def test_stats_sessions_with_mixed_results(self, db, runner):
+        from codecraft.db.repository import Repository
+        from codecraft.models.challenge import ChallengeResult
+        conn = db.connect()
+        repo = Repository(conn)
+        for i in range(3):
+            r = ChallengeResult(
+                challenge_id=f"m{i}", concept_name="for_loop",
+                correct=i % 2 == 0, time_taken_seconds=60 + i * 30, domain="gaming",
+            )
+            repo.insert_challenge_result(r)
+        result = runner.invoke(app, ["stats", "sessions"])
+        assert result.exit_code == 0
+
+
+class TestScheduleCommandExtended:
+    def test_schedule_review_unknown_concept(self, repo, runner):
+        result = runner.invoke(app, ["schedule", "review", "nonexistent_xyz"])
+        assert result.exit_code != 0
+
+    def test_schedule_review_correct(self, db, runner):
+        from codecraft.db.repository import Repository
+        conn = db.connect()
+        repo = Repository(conn)
+        repo.conn.execute(
+            "INSERT INTO file_concepts (file_path, concept_name, occurrences) VALUES (?, ?, ?)",
+            ["test.py", "for_loop", 1],
+        )
+        result = runner.invoke(app, ["schedule", "review", "for_loop", "--correct"])
+        assert result.exit_code == 0
+
+    def test_schedule_review_incorrect(self, db, runner):
+        from codecraft.db.repository import Repository
+        conn = db.connect()
+        repo = Repository(conn)
+        repo.conn.execute(
+            "INSERT INTO file_concepts (file_path, concept_name, occurrences) VALUES (?, ?, ?)",
+            ["test.py", "for_loop", 1],
+        )
+        result = runner.invoke(app, ["schedule", "review", "for_loop", "--incorrect"])
+        assert result.exit_code == 0
+
+    def test_schedule_queue_no_due(self, repo, runner):
+        result = runner.invoke(app, ["schedule", "queue", "--threshold", "1.0"])
+        assert result.exit_code == 0
+
+    def test_schedule_due_none(self, repo, runner):
+        result = runner.invoke(app, ["schedule", "due"])
+        assert result.exit_code == 0
+
+    def test_schedule_decay_filtered(self, repo, runner):
+        result = runner.invoke(app, ["schedule", "decay", "--min", "100"])
+        assert result.exit_code == 0
+
+
+class TestSyncCommandExtended:
+    def test_sync_export_with_data(self, db, runner, tmp_path):
+        from codecraft.db.repository import Repository
+        from codecraft.models.challenge import ChallengeResult
+        conn = db.connect()
+        repo = Repository(conn)
+        r = ChallengeResult(
+            challenge_id="export_test", concept_name="for_loop",
+            correct=True, time_taken_seconds=60, domain="gaming",
+        )
+        repo.insert_challenge_result(r)
+        out = tmp_path / "backup.json"
+        result = runner.invoke(app, ["sync", "export", str(out)])
+        assert result.exit_code == 0
+        assert out.exists()
+
+    def test_sync_export_write_failure(self, repo, runner):
+        result = runner.invoke(app, ["sync", "export", "/nonexistent_dir/backup.json"])
+        assert result.exit_code != 0
+
+    def test_sync_import_bad_json(self, repo, runner, tmp_path):
+        f = tmp_path / "bad.json"
+        f.write_text("not a json")
+        result = runner.invoke(app, ["sync", "import", str(f)])
+        assert result.exit_code != 0
+
+    def test_sync_import_overwrite(self, db, runner, tmp_path):
+        from codecraft.db.repository import Repository
+        from codecraft.models.file import FileRecord
+        conn = db.connect()
+        repo = Repository(conn)
+        repo.upsert_file(FileRecord(path=Path("test.py"), hash="abc", size=100, lines=10))
+        out = tmp_path / "backup.json"
+        runner.invoke(app, ["sync", "export", str(out)])
+        result = runner.invoke(app, ["sync", "import", str(out), "--mode", "overwrite"])
+        assert result.exit_code == 0
+
+    def test_sync_import_merge(self, db, runner, tmp_path):
+        from codecraft.db.repository import Repository
+        conn = db.connect()
+        repo = Repository(conn)
+        out = tmp_path / "backup.json"
+        result = runner.invoke(app, ["sync", "export", str(out)])
+        assert result.exit_code == 0
+        result = runner.invoke(app, ["sync", "import", str(out), "--mode", "merge"])
+        assert result.exit_code == 0
+
+
+class TestSuggestCommandExtended:
+    def test_suggest_next_no_concepts_via_db(self, db, runner):
+        conn = db.connect()
+        conn.execute("DELETE FROM file_concepts")
+        result = runner.invoke(app, ["suggest", "next"])
+        assert result.exit_code == 0
+
+    def test_suggest_all_no_concepts_via_db(self, db, runner):
+        conn = db.connect()
+        conn.execute("DELETE FROM file_concepts")
+        result = runner.invoke(app, ["suggest", "all"])
+        assert result.exit_code == 0
+
+    def test_suggest_next_no_suggestions(self, db, runner):
+        from codecraft.db.repository import Repository
+        from codecraft.models.concept import ConceptTaxonomy
+        from codecraft.models.file import FileConcept
+        conn = db.connect()
+        repo = Repository(conn)
+        concepts = {c.name: FileConcept(concept_name=c.name, occurrences=1) for c in ConceptTaxonomy.all()}
+        repo.upsert_file_concepts(Path("test.py"), concepts)
+        result = runner.invoke(app, ["suggest", "next"])
+        assert result.exit_code == 0
+
+    def test_suggest_all_no_suggestions(self, db, runner):
+        from codecraft.db.repository import Repository
+        from codecraft.models.concept import ConceptTaxonomy
+        from codecraft.models.file import FileConcept
+        conn = db.connect()
+        repo = Repository(conn)
+        concepts = {c.name: FileConcept(concept_name=c.name, occurrences=1) for c in ConceptTaxonomy.all()}
+        repo.upsert_file_concepts(Path("test.py"), concepts)
+        result = runner.invoke(app, ["suggest", "all"])
         assert result.exit_code == 0

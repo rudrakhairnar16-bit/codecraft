@@ -132,4 +132,77 @@ def test_database_init_without_path(tmp_path):
     Database.reset()
 
 
+def test_check_health_retry(monkeypatch, tmp_path):
+    Database.reset()
+    db_path = tmp_path / "test.duckdb"
+    db = Database(db_path)
+    original_execute = duckdb.DuckDBPyConnection.execute
+    select_calls = [0]
+
+    def broken_execute(self, query, *args, **kwargs):
+        q = str(query) if not isinstance(query, str) else query
+        if "SELECT 1" in q:
+            select_calls[0] += 1
+            if select_calls[0] <= 2:
+                raise duckdb.Error("connection broken")
+        return original_execute(self, query, *args, **kwargs)
+
+    monkeypatch.setattr(duckdb.DuckDBPyConnection, "execute", broken_execute)
+    conn = db.connect()
+    assert conn is not None
+    assert db.was_cleaned
+    db.close()
+    Database.reset()
+
+
+def test_close_error(monkeypatch):
+    Database.reset()
+    db = Database(Path(":memory:"))
+    db.db_path = Path(":memory:")
+    db.connect()
+    original_close = duckdb.DuckDBPyConnection.close
+
+    def broken_close(self):
+        raise duckdb.Error("close error")
+
+    monkeypatch.setattr(duckdb.DuckDBPyConnection, "close", broken_close)
+    db.close()
+    assert db._conn is None
+    Database.reset()
+
+
+def test_clean_stale_files_oserror(tmp_path, monkeypatch):
+    Database.reset()
+    db_path = tmp_path / "codecraft.duckdb"
+    stale_wal = tmp_path / "codecraft.wal"
+    stale_wal.write_text("stale")
+    original_unlink = type(stale_wal).unlink
+
+    def broken_unlink(self, *args, **kwargs):
+        if self.name == "codecraft.wal":
+            raise OSError("Permission denied")
+        return original_unlink(self, *args, **kwargs)
+
+    monkeypatch.setattr(type(stale_wal), "unlink", broken_unlink)
+    db = Database(db_path)
+    conn = db.connect()
+    assert stale_wal.exists()
+    db.close()
+    Database.reset()
+
+
+def test_reset_get_profile_dir_error(monkeypatch):
+    Database.reset()
+    import codecraft.cli.profile_cmd
+
+    def broken_get_profile_dir():
+        raise Exception("oops")
+
+    monkeypatch.setattr(codecraft.cli.profile_cmd, "get_profile_dir", broken_get_profile_dir)
+    db = Database(db_path=None)
+    assert db.db_path == Path.home() / ".codecraft" / "codecraft.duckdb"
+    db.close()
+    Database.reset()
+
+
 
