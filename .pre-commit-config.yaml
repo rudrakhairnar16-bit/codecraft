@@ -1,0 +1,12 @@
+repos:
+  - repo: https://github.com/rudrakhairnar16-bit/codecraft
+    rev: v0.1.0
+    hooks:
+      - id: codecraft-scan
+        name: CodeCraft Scan
+        description: Scan Python files for concept usage and learning debt
+        entry: codecraft scan dir
+        language: python
+        types: [python]
+        pass_filenames: false
+        stages: [pre-commit]

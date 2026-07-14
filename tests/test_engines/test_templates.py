@@ -87,3 +87,8 @@ class TestSpecificTemplates:
     def test_empty_domain_fallback(self):
         code = _generate_code_stub(_mk_domain("unknown_domain"), "for_loop")
         assert code is not None
+
+    def test_generate_from_template_unknown_concept(self):
+        from codecraft.engines.templates import generate_from_template
+        result = generate_from_template(_mk_domain(), "nonexistent_concept_xyz")
+        assert result is None

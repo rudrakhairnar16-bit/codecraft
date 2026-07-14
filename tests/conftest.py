@@ -16,23 +16,25 @@ os.environ.setdefault("NO_COLOR", "1")
 def db() -> Generator[Database, None, None]:
     Database.reset()
     db = Database.get_instance()
+    db.db_path = Path(":memory:")
     conn = db.connect()
     run_migrations(conn)
     yield db
+    db.close()
     Database.reset()
 
 
 @pytest.fixture
 def in_memory_db() -> Generator[duckdb.DuckDBPyConnection, None, None]:
     conn = duckdb.connect(":memory:")
+    run_migrations(conn)
     yield conn
     conn.close()
 
 
 @pytest.fixture
-def repo(db: Database) -> Repository:
-    conn = db.connect()
-    return Repository(conn)
+def repo(in_memory_db: duckdb.DuckDBPyConnection) -> Repository:
+    return Repository(in_memory_db)
 
 
 @pytest.fixture
