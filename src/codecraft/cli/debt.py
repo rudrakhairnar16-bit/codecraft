@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 import typer
-from rich.panel import Panel
-from rich.table import Table
 
 from codecraft.cli.deps import get_repo
-from codecraft.engines.debt_tracker import DebtTrackerEngine
 from codecraft.utils.colors import console
 
 DEBT_TO_CONCEPT = {
@@ -34,6 +31,8 @@ debt_app = typer.Typer(name="debt", no_args_is_help=True)
 @debt_app.command("report", epilog="Example: codecraft debt report")
 def debt_report() -> None:
     repo = get_repo()
+    from codecraft.engines.debt_tracker import DebtTrackerEngine
+    from rich.panel import Panel
     engine = DebtTrackerEngine(repo)
     report = engine.get_report()
 
@@ -44,6 +43,7 @@ def debt_report() -> None:
     console.print(f"Debt score: [score]{report.score:.1%}[/score]")
 
     if report.by_type:
+        from rich.table import Table
         table = Table(title="Debt by Pattern")
         table.add_column("Pattern", style="debt")
         table.add_column("Count", justify="right")
@@ -60,6 +60,7 @@ def debt_list(
     pattern: str | None = typer.Option(None, "--type", "-t", help="Filter by pattern type"),
 ) -> None:
     repo = get_repo()
+    from codecraft.engines.debt_tracker import DebtTrackerEngine
     engine = DebtTrackerEngine(repo)
     report = engine.get_report()
 
@@ -71,6 +72,7 @@ def debt_list(
         console.print("[success]No unresolved debt items matching criteria.[/success]")
         return
 
+    from rich.table import Table
     table = Table(title=f"Unresolved Debt ({len(items)})")
     table.add_column("ID", style="dim")
     table.add_column("Pattern", style="debt")
@@ -96,6 +98,8 @@ def debt_challenge(
     domain: str = typer.Option("gaming", "--domain", "-d", help="Domain context for practice"),
 ) -> None:
     repo = get_repo()
+    from codecraft.engines.debt_tracker import DebtTrackerEngine
+    from rich.panel import Panel
     engine = DebtTrackerEngine(repo)
     report = engine.get_report()
 

@@ -3,11 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
-from rich.panel import Panel
 
-from codecraft.cli.deps import get_repo
+from codecraft.cli.deps import backup_db, get_repo
 from codecraft.db.connection import Database
-from codecraft.models.concept import ConceptTaxonomy
 from codecraft.utils.colors import console
 
 init_app = typer.Typer(name="init", no_args_is_help=True)
@@ -28,12 +26,17 @@ def init_all(
         console.print("[warning]CodeCraft is already initialized. Use --force to reinitialize.[/warning]")
         return
 
+    if force and already:
+        backup_db("preinit")
+
     db_path = Database.get_instance().db_path
+    from rich.panel import Panel
     console.print(Panel("[title]Initializing CodeCraft...[/title]"))
 
     seed = repo.get_setting("concepts_seeded", "0")
     if seed != "1" or force:
         count = 0
+        from codecraft.models.concept import ConceptTaxonomy
         for c in ConceptTaxonomy.all():
             repo.conn.execute(
                 "INSERT OR IGNORE INTO concepts (name, tier, category, description) VALUES (?, ?, ?, ?)",
@@ -61,6 +64,7 @@ def init_reset() -> None:
     if not confirm:
         console.print("[warning]Reset cancelled.[/warning]")
         return
+    backup_db("prereset")
     db = Database.get_instance()
     db_path = Path(db.db_path)
     if db_path.exists():

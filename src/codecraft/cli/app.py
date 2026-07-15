@@ -4,12 +4,9 @@ from datetime import datetime
 from typing import Any
 
 import typer
-from rich.panel import Panel
-from rich.table import Table
 
 from codecraft.cli.deps import get_repo, init_db
 from codecraft.utils.colors import console
-from codecraft.utils.i18n import t
 
 app = typer.Typer(
     name="codecraft",
@@ -17,6 +14,15 @@ app = typer.Typer(
     no_args_is_help=True,
     pretty_exceptions_enable=False,
 )
+
+IS_QUIET = False
+
+_BANNER = r""" ______          __        ___________      _________
+ / ____/___  ____/ /__     / ____/ ___/     / ____/   |  ____  ____
+ / /   / __ \/ __  / _ \   / /    \__ \____ / /_  / /| | / __ \/ __ \
+/ /___/ /_/ / /_/ /  __/  / /___ ___/ /___/ __/ / ___ |/ /_/ / /_/ /
+\____/\____/\__,_/\___/   \____//____/     /_/   /_/ |_/ .___/ .___/
+                                                        /_/   /_/"""
 
 IS_QUIET = False
 
@@ -44,6 +50,7 @@ def main(
         set_locale(lang)
     repo = init_db()
     if not _quiet():
+        console.print(_BANNER)
         _check_onboarding(repo)
 
 
@@ -51,6 +58,7 @@ def _check_onboarding(repo: Any) -> None:
     inited = repo.get_setting("onboarded", "")
     if inited:
         return
+    from rich.panel import Panel
     console.print(Panel("[title]Welcome to CodeCraft![/title]\n\n"
                         "Your personal Python skill forge.\n\n"
                         "[info]Quick start:[/info]\n"
@@ -115,6 +123,10 @@ def show_status(
             f"streak={streak['current_streak']}d decaying={decaying}"
         )
         return
+
+    from codecraft.utils.i18n import t
+    from rich.panel import Panel
+    from rich.table import Table
 
     console.print(Panel(f"[title]CodeCraft Status - {datetime.now().strftime('%Y-%m-%d %H:%M')}[/title]"))
 

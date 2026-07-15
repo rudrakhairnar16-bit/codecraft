@@ -126,3 +126,14 @@ def run_migrations(conn: duckdb.DuckDBPyConnection) -> None:
                 [c.name, c.tier.value, c.category, c.description],
             )
         conn.execute("INSERT INTO schema_version (version) VALUES (3)")
+
+    if current_version < 4:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_file_concepts_file ON file_concepts(file_path)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_file_concepts_concept ON file_concepts(concept_name)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_debt_items_file ON debt_items(file_path)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_debt_items_pattern ON debt_items(pattern_type)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_debt_items_resolved ON debt_items(resolved)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_spaced_repetition_review ON spaced_repetition(next_review)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_challenge_history_concept ON challenge_history(concept_name)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_challenge_history_created ON challenge_history(created)")
+        conn.execute("INSERT INTO schema_version (version) VALUES (4)")

@@ -1,8 +1,6 @@
 ﻿from __future__ import annotations
 
 import typer
-from rich.panel import Panel
-from rich.table import Table
 
 from codecraft.cli.deps import get_repo
 from codecraft.utils.colors import console
@@ -19,6 +17,8 @@ def stats_sessions(
     streak = repo.get_streak_data()
     history = repo.get_challenge_history(limit=limit)
 
+    from rich.panel import Panel
+    from rich.table import Table
     console.print(Panel("[title]Session Statistics[/title]"))
     table = Table(show_header=False)
     table.add_column("Metric", style="bold")

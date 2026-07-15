@@ -3,18 +3,21 @@ from __future__ import annotations
 from typing import Any
 
 import typer
-from rich.panel import Panel
-from rich.table import Table
 
-from codecraft.cli.deps import get_repo
+from codecraft.cli.deps import backup_db, get_repo
 from codecraft.utils.colors import console
 
 vacuum_app = typer.Typer(name="vacuum", no_args_is_help=True, help="Compact and deduplicate database")
 
 
 @vacuum_app.command("run")
-def vacuum_run() -> None:
+def vacuum_run(
+    no_backup: bool = typer.Option(False, "--no-backup", help="Skip backup before vacuum"),
+) -> None:
     repo = get_repo()
+    if not no_backup:
+        backup_db("prevacuum")
+    from rich.panel import Panel
     console.print(Panel("[title]Vacuuming Database...[/title]"))
 
     before = _get_db_stats(repo)
@@ -25,6 +28,7 @@ def vacuum_run() -> None:
 
     after = _get_db_stats(repo)
 
+    from rich.table import Table
     table = Table(show_header=False)
     table.add_column("Metric", style="bold")
     table.add_column("Before")
@@ -40,6 +44,7 @@ def vacuum_run() -> None:
 def vacuum_stats() -> None:
     repo = get_repo()
     stats = _get_db_stats(repo)
+    from rich.table import Table
     table = Table(title="Database Storage Stats")
     table.add_column("Table", style="bold")
     table.add_column("Rows")

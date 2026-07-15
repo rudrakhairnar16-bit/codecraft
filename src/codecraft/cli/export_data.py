@@ -8,8 +8,6 @@ from typing import Any
 import typer
 
 from codecraft.cli.deps import get_repo
-from codecraft.engines.debt_tracker import DebtTrackerEngine
-from codecraft.engines.scheduler import ForgettingScheduler
 from codecraft.utils.colors import console
 
 export_app = typer.Typer(name="export", no_args_is_help=True)
@@ -69,6 +67,8 @@ def export_summary() -> None:
 def _build_export_data(repo: Any) -> dict[str, Any]:
     files = repo.get_all_files()
     concepts = repo.get_all_concept_names()
+    from codecraft.engines.debt_tracker import DebtTrackerEngine
+    from codecraft.engines.scheduler import ForgettingScheduler
     debt = DebtTrackerEngine(repo).get_report()
     scheduler = ForgettingScheduler(repo)
     cards = scheduler.repo.get_all_cards()

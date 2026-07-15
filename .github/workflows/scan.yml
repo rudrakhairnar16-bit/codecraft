@@ -1,0 +1,35 @@
+name: CodeCraft Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install codecraft-cli
+        run: |
+          python -m pip install --upgrade pip
+          pip install codecraft-cli
+
+      - name: Init database
+        run: codecraft init --force
+
+      - name: Scan codebase
+        run: codecraft scan dir . -r
+
+      - name: Show debt report
+        run: codecraft debt list
+
+      - name: Show learning status
+        run: codecraft status

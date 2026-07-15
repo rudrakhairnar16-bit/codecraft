@@ -18,6 +18,36 @@ from codecraft.scanner.multilang import Language, LanguageDetector
 from codecraft.scanner.unified import UnifiedScanner
 from codecraft.utils.colors import console
 
+_IGNORE_DIRS: set[str] = {".git", "node_modules", "__pycache__", "venv", ".venv", "env", ".env", ".tox", "build", "dist", ".eggs", "eggs", "__pypackages__"}
+
+
+def _load_gitignore(path: Path) -> list[str] | None:
+    gitignore = path / ".gitignore"
+    if not gitignore.exists():
+        return None
+    try:
+        return [line.strip() for line in gitignore.read_text(encoding="utf-8", errors="replace").splitlines()
+                if line.strip() and not line.strip().startswith("#")]
+    except Exception:
+        return None
+
+
+def _is_ignored(file: Path, gitignore_patterns: list[str] | None) -> bool:
+    if any(part in _IGNORE_DIRS for part in file.parts):
+        return True
+    if any(part.startswith(".") for part in file.parts):
+        return True
+    if gitignore_patterns:
+        try:
+            import pathspec
+            spec = pathspec.PathSpec.from_lines("gitwildmatch", gitignore_patterns)
+            if spec.match_file(str(file)):
+                return True
+        except Exception:
+            pass
+    return False
+from rich.progress import Progress
+
 scan_app = typer.Typer(name="scan", no_args_is_help=True)
 
 
@@ -28,15 +58,18 @@ def scan_directory(
     watch: bool = typer.Option(False, "-w", "--watch", help="Watch for file changes"),
     dry_run: bool = typer.Option(False, "--dry-run", "-n", help="Preview without persisting"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
+    no_gitignore: bool = typer.Option(False, "--no-gitignore", help="Ignore .gitignore rules"),
 ) -> None:
     supported_exts = set(LanguageDetector.supported_extensions())
     _patterns = ["**/*"] if recursive else ["*"]
     scanner = UnifiedScanner()
     repo = get_repo()
 
+    gitignore_patterns = None if no_gitignore else _load_gitignore(Path(path))
+
     files = []
     for p in Path(path).rglob("*") if recursive else Path(path).glob("*"):
-        if p.suffix.lower() in supported_exts and p.is_file():
+        if p.suffix.lower() in supported_exts and p.is_file() and not _is_ignored(p, gitignore_patterns):
             files.append(p)
     files.sort()
 
@@ -51,13 +84,27 @@ def scan_directory(
         console.print(f"[title]Scanning {len(files)} files ({lang_count} Python, {other_count} other)...[/title]")
 
     scanned = 0
+    progress: Progress | None = None
+    task_id: Any = None
+    if not json_output and not dry_run:
+        from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+        progress = Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            transient=True,
+        )
+        progress.start()
+        task_id = progress.add_task("Scanning...", total=len(files))
+
     for file in files:
-        if any(part.startswith(".") for part in file.parts):
-            continue
         try:
             report = scanner.scan_file(file)
         except Exception as e:
             console.print(f"[error]Failed to scan {file}: {e}[/error]")
+            if progress and task_id is not None:
+                progress.advance(task_id)
             continue
         if report and not report.errors:
             fhash = file_hash(file)
@@ -66,6 +113,8 @@ def scan_directory(
             if dry_run:
                 console.print(f"  [dim]{file}[/dim] - {len(report.concepts)} concepts, {len(report.debt_items)} debts")
                 scanned += 1
+                if progress and task_id is not None:
+                    progress.advance(task_id)
                 continue
 
             record = FileRecord(
@@ -105,6 +154,12 @@ def scan_directory(
 
             scanned += 1
 
+        if progress and task_id is not None:
+            progress.advance(task_id)
+
+    if progress:
+        progress.stop()
+
     if json_output:
         data = {"files_scanned": scanned}
         console.print(_json.dumps(data))
@@ -141,13 +196,60 @@ def _watch_directory(path: Path, scanner: UnifiedScanner, repo: Repository) -> N
         console.print("[error]watchdog not installed. Run: pip install watchdog[/error]")
         raise typer.Exit(1)
 
+    supported_exts = set(LanguageDetector.supported_extensions())
+    from codecraft.engines.debt_tracker import DebtTrackerEngine
+
     class CodecraftHandler(FileSystemEventHandler):
-        def on_modified(self, event: Any) -> None:
-            if event.src_path.endswith(".py"):
-                file = Path(event.src_path)
+        def _rescan(self, src_path: str) -> None:
+            file = Path(src_path)
+            if file.suffix.lower() not in supported_exts:
+                return
+            try:
                 report = scanner.scan_file(file)
-                if report and not report.errors:
-                    console.print(f"[info]Re-scanned: {file.name}[/info]")
+            except Exception as e:
+                console.print(f"[error]Failed to scan {file}: {e}[/error]")
+                return
+            if report is None or report.errors:
+                return
+
+            import ast
+            from codecraft.scanner.debt_detector import DebtDetector
+
+            fhash = file_hash(file)
+            size, lines = file_stats(file)
+            record = FileRecord(path=file, hash=fhash, size=size, lines=lines)
+            record.complexity = report.complexity
+            record.import_count = len(report.imports)
+            repo.upsert_file(record)
+
+            lang = LanguageDetector.detect(str(file))
+            if lang == Language.PYTHON:
+                source = file.read_text(encoding="utf-8", errors="replace")
+                try:
+                    tree = ast.parse(source)
+                    concepts = scanner.concept_extractor.extract(tree)
+                    if isinstance(concepts, dict):
+                        repo.upsert_file_concepts(file, concepts)
+                    debt_detector = DebtDetector(source, file)
+                    debt_items = debt_detector.detect(tree)
+                    DebtTrackerEngine(repo).scan_and_track(debt_items)
+                except SyntaxError:
+                    pass
+            else:
+                concepts = scanner.multi_scanner.parse_file(str(file))
+                if concepts:
+                    repo.upsert_file_concepts(file, concepts)
+
+            console.print(f"[info]Re-scanned: {file.name}[/info]")
+
+        def on_modified(self, event: Any) -> None:
+            self._rescan(event.src_path)
+
+        def on_created(self, event: Any) -> None:
+            self._rescan(event.src_path)
+
+        def on_moved(self, event: Any) -> None:
+            self._rescan(event.dest_path)
 
     handler = CodecraftHandler()
     observer = Observer()
@@ -159,6 +261,7 @@ def _watch_directory(path: Path, scanner: UnifiedScanner, repo: Repository) -> N
             time.sleep(1)
     except KeyboardInterrupt:
         observer.stop()
+    console.print("[success]Watch stopped.[/success]")
     observer.join()
 
 
