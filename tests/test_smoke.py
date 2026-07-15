@@ -358,3 +358,41 @@ class TestSmokeFlow:
         for args, label in cmds:
             result = runner.invoke(app, args)
             assert result.exit_code == 0, f"{label} failed: {result.stdout[:200]}"
+
+    def test_incremental_scan(self, runner, sample_project):
+        result = runner.invoke(app, ["scan", "dir", str(sample_project)])
+        assert result.exit_code == 0
+        result2 = runner.invoke(app, ["scan", "dir", str(sample_project), "--incremental"])
+        assert result2.exit_code == 0
+
+    def test_scan_no_gitignore(self, runner, sample_project):
+        result = runner.invoke(app, ["scan", "dir", str(sample_project), "--no-gitignore"])
+        assert result.exit_code == 0
+
+    def test_vacuum_backup(self, runner, sample_project):
+        result = runner.invoke(app, ["scan", "dir", str(sample_project)])
+        assert result.exit_code == 0
+        result2 = runner.invoke(app, ["vacuum", "run"])
+        assert result.exit_code == 0
+
+    def test_profile_list_empty(self, runner):
+        result = runner.invoke(app, ["profile", "list"])
+        assert result.exit_code == 0
+
+    def test_profile_delete_not_found(self, runner):
+        result = runner.invoke(app, ["profile", "delete", "nonexistent"])
+        assert result.exit_code != 0
+
+    def test_precommit_show(self, runner):
+        result = runner.invoke(app, ["precommit", "show"])
+        assert result.exit_code == 0
+        assert "codecraft" in result.stdout
+
+    def test_backup_function(self, runner, sample_project):
+        from codecraft.cli.deps import backup_db
+        from codecraft.db.connection import Database
+        Database.get_instance()
+        bak = backup_db("test")
+        if bak:
+            assert bak.exists()
+            bak.unlink()
