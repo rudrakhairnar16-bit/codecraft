@@ -253,4 +253,4 @@ pytest tests/test_scanner/test_concept_extractor.py -v
 
 All Rights Reserved. See [LICENSE](LICENSE) for details.
 
-For usage permissions, contact [Rudra Khairnar](https://github.com/rudrakhairnar16-bit).
+For usage permissions, contact [Rudra Khaire](https://github.com/rudrakhairnar16-bit).
