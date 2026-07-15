@@ -9,12 +9,12 @@ from codecraft.utils.colors import console
 PRE_COMMIT_CONFIG = """
 repos:
   - repo: https://github.com/rudrakhairnar16-bit/codecraft
-    rev: v0.1.0
+    rev: v0.2.0
     hooks:
       - id: codecraft-scan
         name: CodeCraft Scan
         description: Scan Python files for concept usage and learning debt
-        entry: codecraft scan dir
+        entry: codecraft scan dir . --incremental
         language: python
         types: [python]
         pass_filenames: false
@@ -28,7 +28,7 @@ import sys
 
 def main():
     result = subprocess.run(
-        ["codecraft", "scan", "dir", "."],
+        ["codecraft", "scan", "dir", ".", "--incremental"],
         capture_output=True, text=True,
     )
     print(result.stdout)
