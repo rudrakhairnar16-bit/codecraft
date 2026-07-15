@@ -4,6 +4,9 @@ import typer
 from rich.table import Table
 from rich.tree import Tree
 
+import time
+from datetime import datetime
+
 from codecraft.cli.deps import get_repo
 from codecraft.engines.debt_tracker import DebtTrackerEngine
 from codecraft.engines.remix import RemixEngine
@@ -151,3 +154,134 @@ def show_trends() -> None:
         console.print(f"\n[warning]Gaps to fill:[/warning] {', '.join(gaps[:10])}")
         if len(gaps) > 10:
             console.print(f"[dim]... and {len(gaps) - 10} more[/dim]")
+
+
+@dashboard_app.command("live", epilog="Example: codecraft dashboard live --interval 3")
+def show_live(
+    interval: int = typer.Option(2, "--interval", "-i", help="Refresh interval in seconds"),
+    max_loops: int = typer.Option(0, "--max", "-m", help="Max refreshes (0=infinite)"),
+) -> None:
+    from rich.layout import Layout
+    from rich.live import Live
+    from rich.panel import Panel
+    from rich.table import Table
+    from rich.text import Text
+
+    repo = get_repo()
+
+    def _build_layout() -> Layout:
+        layout = Layout()
+        layout.split_column(
+            Layout(name="top", size=3),
+            Layout(name="body"),
+        )
+        layout["body"].split_row(
+            Layout(name="left"),
+            Layout(name="right"),
+        )
+        layout["body"]["left"].split_column(
+            Layout(name="stats"),
+            Layout(name="concepts"),
+        )
+        layout["body"]["right"].split_column(
+            Layout(name="debt"),
+            Layout(name="reviews"),
+        )
+
+        files = repo.get_all_files()
+        concepts = repo.get_all_concept_names()
+        scheduler = ForgettingScheduler(repo)
+        debt_engine = DebtTrackerEngine(repo)
+        debt_report = debt_engine.get_report()
+        decay_report = scheduler.get_decay_report()
+        remix = RemixEngine(repo)
+        gaps = remix.find_gaps()
+        stats = repo.get_practice_stats()
+        streak = repo.get_streak_data()
+        decaying = sum(1 for r in decay_report if r["status"] == "decaying")
+        stable = sum(1 for r in decay_report if r["status"] == "stable")
+        fresh = sum(1 for r in decay_report if r["status"] == "fresh")
+        due = scheduler.get_review_queue().due_cards()
+
+        top = Panel(
+            Text.assemble(
+                (" CodeCraft ", "bold cyan"),
+                ("Live Dashboard", "white"),
+                (" │ ", "dim"),
+                (f"{len(files)} files", "green"),
+                (" │ ", "dim"),
+                (f"{len(concepts)} concepts", "blue"),
+                (" │ ", "dim"),
+                (f"{debt_report.score:.0%} debt", "yellow"),
+                (" │ ", "dim"),
+                (f"{streak['current_streak']}d streak", "magenta"),
+                (" │ ", "dim"),
+                (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "bold cyan"),
+            ),
+            style="bold",
+        )
+        layout["top"].update(top)
+
+        s = Table(show_header=False, box=None, padding=(0, 2))
+        s.add_column()
+        s.add_column()
+        s.add_row("[bold]Files Scanned[/bold]", str(len(files)))
+        s.add_row("[bold]Concepts Detected[/bold]", str(len(concepts)))
+        s.add_row("[bold]Concept Gaps[/bold]", f"[debt]{len(gaps)}[/debt]")
+        s.add_row("[bold]Practice Sessions[/bold]", str(stats["total_sessions"]))
+        s.add_row("[bold]Accuracy[/bold]", f"{stats['correct_sessions'] * 100 // max(stats['total_sessions'], 1)}%" if stats["total_sessions"] else "N/A")
+        s.add_row("[bold]Current Streak[/bold]", f"{streak['current_streak']} days")
+        s.add_row("[bold]Active Days[/bold]", str(streak["total_active_days"]))
+        layout["stats"].update(Panel(s, title="📊 Overview", border_style="cyan"))
+
+        c = Table(show_header=False, box=None, padding=(0, 2))
+        c.add_column()
+        c.add_column()
+        c.add_row("[bold]Fresh[/bold]", f"[strength.high]{fresh}[/strength.high]")
+        c.add_row("[bold]Stable[/bold]", f"[strength.medium]{stable}[/strength.medium]")
+        c.add_row("[bold]Decaying[/bold]", f"[strength.low]{decaying}[/strength.low]")
+        c.add_row("[bold]Due for Review[/bold]", f"[debt]{len(due)}[/debt]")
+        layout["concepts"].update(Panel(c, title="🧠 Concept Retention", border_style="green"))
+
+        d = Table(show_header=False, box=None, padding=(0, 2))
+        d.add_column()
+        d.add_column()
+        d.add_row("[bold]Total Items[/bold]", str(debt_report.total_items))
+        d.add_row("[bold]Resolved[/bold]", f"[success]{debt_report.resolved_items}[/success]")
+        d.add_row("[bold]Unresolved[/bold]", f"[debt]{len(debt_report.unresolved)}[/debt]")
+        d.add_row("[bold]Debt Score[/bold]", f"[score]{debt_report.score:.1%}[/score]")
+
+        if debt_report.unresolved:
+            top_patterns = sorted(debt_report.by_type.items(), key=lambda x: -x[1])[:4]
+            d.add_section()
+            d.add_row("[bold]Top Patterns[/bold]", "")
+            for pattern, count in top_patterns:
+                d.add_row(f"  {pattern.replace('_', ' ').title()}", str(count))
+        layout["debt"].update(Panel(d, title="💳 Learning Debt", border_style="yellow"))
+
+        r = Table(show_header=False, box=None, padding=(0, 2))
+        r.add_column()
+        r.add_column()
+        for card in due[:6]:
+            status = "fresh" if card.strength >= 0.8 else ("stable" if card.strength >= 0.6 else "decaying")
+            color = "strength.high" if status == "fresh" else ("strength.medium" if status == "stable" else "strength.low")
+            r.add_row(card.concept_name, f"[{color}]{card.strength:.0%}[/{color}]")
+        if not due:
+            r.add_row("[dim]No reviews due[/dim]", "")
+        layout["reviews"].update(Panel(r, title="📅 Due for Review", border_style="magenta"))
+
+        return layout
+
+    loop = 0
+    with Live(_build_layout(), refresh_per_second=1 / interval, screen=True) as live:
+        try:
+            while True:
+                loop += 1
+                if max_loops and loop > max_loops:
+                    break
+                time.sleep(interval)
+                live.update(_build_layout())
+        except KeyboardInterrupt:
+            pass
+
+    console.print("[success]Live dashboard closed.[/success]")
