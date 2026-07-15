@@ -35,12 +35,14 @@
   <path d="M200 270 C200 270 192 258 192 248 C192 240 198 234 200 234 C202 234 208 240 208 248 C208 258 200 270 200 270Z"
         fill="#fff" opacity="0.4"/>
 
-  <!-- Text: CodeCraft -->
-  <text x="200" y="350" font-family="sans-serif" font-size="28" font-weight="bold"
+  <!-- Text: CodeCraft CLI -->
+  <text x="200" y="345" font-family="sans-serif" font-size="24" font-weight="bold"
         fill="#e0e0e0" text-anchor="middle" letter-spacing="4">CODECRAFT</text>
+  <text x="200" y="368" font-family="sans-serif" font-size="14" font-weight="bold"
+        fill="url(#accent)" text-anchor="middle" letter-spacing="6">CLI</text>
 
   <!-- Tagline -->
-  <text x="200" y="375" font-family="sans-serif" font-size="11" fill="#888"
+  <text x="200" y="385" font-family="sans-serif" font-size="10" fill="#888"
         text-anchor="middle" letter-spacing="2">YOUR CODE SKILL FORGE</text>
 
   <!-- Small decorative dots -->
