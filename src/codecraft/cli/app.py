@@ -9,6 +9,7 @@ from rich.table import Table
 
 from codecraft.cli.deps import get_repo, init_db
 from codecraft.utils.colors import console
+from codecraft.utils.i18n import t
 
 app = typer.Typer(
     name="codecraft",
@@ -34,7 +35,7 @@ def _quiet() -> bool:
 def main(
     ctx: typer.Context,
     quiet: bool = typer.Option(False, "--quiet", help="Minimal output mode", is_eager=True),
-    lang: str | None = typer.Option(None, "--lang", help="Language locale (en, hi)", is_eager=True),
+    lang: str | None = typer.Option(None, "--lang", help="Language locale (en, hi, mr)", is_eager=True),
 ) -> None:
     global IS_QUIET
     IS_QUIET = quiet
@@ -121,12 +122,12 @@ def show_status(
     table.add_column("Metric", style="bold")
     table.add_column("Value")
 
-    table.add_row("Files scanned", str(len(files)))
-    table.add_row("Concepts detected", str(len(concepts)))
-    table.add_row("Concept gaps", f"[debt]{len(gaps)}[/debt]")
-    table.add_row("Debt score", f"[score]{debt_report.score:.0%}[/score]")
-    table.add_row("Unresolved debt", f"[debt]{len(debt_report.unresolved)}[/debt]")
-    table.add_row("Practice sessions", str(stats["total_sessions"]))
+    table.add_row(t("files") + " scanned", str(len(files)))
+    table.add_row(t("concepts") + " " + t("detected"), str(len(concepts)))
+    table.add_row(t("concept") + " " + t("gaps"), f"[debt]{len(gaps)}[/debt]")
+    table.add_row(t("debt") + " " + t("score"), f"[score]{debt_report.score:.0%}[/score]")
+    table.add_row(t("unresolved") + " " + t("debt"), f"[debt]{len(debt_report.unresolved)}[/debt]")
+    table.add_row(t("practice") + " " + t("sessions"), str(stats["total_sessions"]))
     pct = f"{stats['correct_sessions'] * 100 // max(stats['total_sessions'], 1)}%"
     table.add_row("Accuracy", pct if stats["total_sessions"] else "N/A")
     table.add_row("Streak", f"{streak['current_streak']} days")

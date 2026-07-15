@@ -1,6 +1,37 @@
 # CodeCraft
 
-Your personal Python skill forge — **scans your code**, **finds learning gaps**, **generates transfer exercises**, and **schedules spaced repetition reviews** — all from patterns in your own code.
+```
+   ______          __        ___________      _________
+  / ____/___  ____/ /__     / ____/ ___/     / ____/   |  ____  ____
+ / /   / __ \/ __  / _ \   / /    \__ \____ / /_  / /| | / __ \/ __ \
+/ /___/ /_/ / /_/ /  __/  / /___ ___/ /___/ __/ / ___ |/ /_/ / /_/ /
+\____/\____/\__,_/\___/   \____//____/     /_/   /_/ |_/ .___/ .___/
+                                                        /_/   /_/
+```
+
+> Your personal Python skill forge — **scans your code**, **finds learning gaps**, **generates transfer exercises**, and **schedules spaced repetition reviews** — all from patterns in your own code.
+
+```bash
+pip install codecraft-cli
+```
+
+---
+
+## Quick Start
+
+```bash
+# Scan your codebase
+codecraft scan ~/my-project
+
+# See what you need to learn
+codecraft remix gaps
+
+# Start practicing
+codecraft practice path beginner
+
+# Review with spaced repetition
+codecraft schedule queue
+```
 
 ```
 codecraft scan ~/Desktop/Python
@@ -42,7 +73,7 @@ pip install -e ".[dev]"
 codecraft --help
 ```
 
-You should see available commands: `scan`, `debt`, `remix`, `schedule`, `dashboard`, `practice`.
+You should see available commands: `scan`, `debt`, `remix`, `schedule`, `dashboard`, `practice`, `progress`, `suggest`, `learn`, `stats`, `export`, `init`, `start`, `vacuum`, `precommit`, `sync`, `profile`, `status`.
 
 ### Step 4: Scan your first code
 
@@ -69,8 +100,8 @@ codecraft practice path beginner
 
 ### Code Scanner
 - AST-based analysis reads your `.py` files without executing them
-- Detects **76+ concepts** across 4 tiers (basics → advanced)
-- Identifies **12 anti-patterns** (bare except, magic numbers, mutable defaults, etc.)
+- Detects **130+ concepts** across 4 tiers (basics → advanced)
+- Identifies **17 anti-patterns** (bare except, magic numbers, mutable defaults, etc.)
 - Computes cyclomatic complexity and import dependency graphs
 
 ### Debt Tracker
@@ -196,7 +227,7 @@ codecraft/
 │   ├── models/           # Pydantic data models
 │   ├── scanner/          # AST parser, concept extractor, debt detector
 │   └── utils/            # Colors, helpers
-├── tests/                # Pytest test suite (36+ tests)
+├── tests/                # Pytest test suite (553+ tests)
 ├── pyproject.toml        # Project config & dependencies
 └── README.md
 ```
@@ -210,7 +241,7 @@ codecraft/
 pytest
 
 # With coverage
-pytest --cov=codecraft
+pytest --cov=codecraft --cov-report=term
 
 # Run specific test file
 pytest tests/test_scanner/test_concept_extractor.py -v
