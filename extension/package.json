@@ -4,7 +4,7 @@
   "description": "Personal skill forge — scan your code, detect concepts, track learning debt",
   "version": "0.1.0",
   "publisher": "codecraft",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "engines": {
     "vscode": "^1.85.0"
   },

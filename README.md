@@ -251,4 +251,6 @@ pytest tests/test_scanner/test_concept_extractor.py -v
 
 ## License
 
-MIT
+All Rights Reserved. See [LICENSE](LICENSE) for details.
+
+For usage permissions, contact [Rudra Khairnar](https://github.com/rudrakhairnar16-bit).
