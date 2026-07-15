@@ -46,6 +46,18 @@ def _is_ignored(file: Path, gitignore_patterns: list[str] | None) -> bool:
         except Exception:
             pass
     return False
+
+
+def _is_changed(repo: Any, file: Path) -> bool:
+    from codecraft.models.file import FileRecord
+    stored = repo.files.get(file)
+    if stored is None:
+        return True
+    try:
+        current = file_hash(file)
+    except Exception:
+        return True
+    return stored.hash != current
 from rich.progress import Progress
 
 scan_app = typer.Typer(name="scan", no_args_is_help=True)
@@ -59,6 +71,7 @@ def scan_directory(
     dry_run: bool = typer.Option(False, "--dry-run", "-n", help="Preview without persisting"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
     no_gitignore: bool = typer.Option(False, "--no-gitignore", help="Ignore .gitignore rules"),
+    incremental: bool = typer.Option(False, "--incremental", "-i", help="Skip files with unchanged hash"),
 ) -> None:
     supported_exts = set(LanguageDetector.supported_extensions())
     _patterns = ["**/*"] if recursive else ["*"]
@@ -73,6 +86,13 @@ def scan_directory(
             files.append(p)
     files.sort()
 
+    if incremental:
+        before = len(files)
+        files = [f for f in files if _is_changed(repo, f)]
+        skipped = before - len(files)
+    else:
+        skipped = 0
+
     if not files:
         exts = ", ".join(supported_exts)
         console.print(f"[warning]No supported files ({exts}) found in {path}[/warning]")
@@ -81,7 +101,11 @@ def scan_directory(
     if not json_output:
         lang_count = len([f for f in files if f.suffix == ".py"])
         other_count = len(files) - lang_count
-        console.print(f"[title]Scanning {len(files)} files ({lang_count} Python, {other_count} other)...[/title]")
+        msg = f"[title]Scanning {len(files)} files ({lang_count} Python, {other_count} other)"
+        if skipped:
+            msg += f", {skipped} skipped (unchanged)"
+        msg += "...[/title]"
+        console.print(msg)
 
     scanned = 0
     progress: Progress | None = None
@@ -170,12 +194,14 @@ def scan_directory(
         console.print("[info]Remove --dry-run to persist to database.[/info]")
         return
 
-    console.print(f"[success]Scanned {scanned} files successfully[/success]")
+    console.print(f"[success]Scanned {scanned} files successfully" + (f" ({skipped} skipped)" if skipped else "") + "[/success]")
 
     table = Table(title="Scan Summary")
     table.add_column("Metric", style="bold")
     table.add_column("Value")
     table.add_row("Files scanned", str(scanned))
+    if skipped:
+        table.add_row("Skipped (unchanged)", str(skipped))
     table.add_row("Concepts tracked", str(len(repo.get_all_concept_names())))
 
     debt_report = DebtTrackerEngine(repo).get_report()
