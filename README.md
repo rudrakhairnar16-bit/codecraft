@@ -9,6 +9,8 @@
                                                         /_/   /_/
 ```
 
+▶️ [**Watch Full Demo on YouTube**](https://youtu.be/qODFxYy5AGc) — Complete walkthrough of all 45+ features, 6 languages, 4 locales, and more.
+
 > Your personal Python skill forge — **scans your code**, **finds learning gaps**, **generates transfer exercises**, and **schedules spaced repetition reviews** — all from patterns in your own code.
 
 ```bash
